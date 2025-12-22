@@ -4,6 +4,7 @@ import ProductCard from './components/ProductCard';
 import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
 import ProductDetail from './components/ProductDetail';
+import VideoCategoryTile from './components/VideoCategoryTile';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
@@ -63,25 +64,30 @@ const App: React.FC = () => {
       id: Category.KURTI_SET, 
       name: 'Kurti Sets', 
       image: designImages.D1,
-      tagline: 'Timeless Traditions'
+      video: '/designs/VID-20251221-WA0088.mp4',
+      tagline: 'Timeless Traditions',
+      useVideo: true
     },
     { 
       id: Category.INDO_WESTERN, 
       name: 'Indo Western', 
       image: designImages.D2,
-      tagline: 'Modern Fusion'
+      tagline: 'Modern Fusion',
+      useVideo: false
     },
     { 
       id: Category.COORD_SETS, 
       name: 'Co-ord Sets', 
       image: designImages.D3,
-      tagline: 'Chic & Matching'
+      tagline: 'Chic & Matching',
+      useVideo: false
     },
     { 
       id: Category.TUNICS, 
       name: 'Tunics', 
       image: designImages.D4,
-      tagline: 'Everyday Comfort'
+      tagline: 'Everyday Comfort',
+      useVideo: false
     },
   ];
 
@@ -297,26 +303,37 @@ const App: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {categoryTiles.map((cat, idx) => (
-                  <button 
-                    key={cat.id}
-                    onClick={() => handleNavigation(cat.id)}
-                    className="group relative h-[450px] overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    <img 
-                      src={cat.image} 
-                      alt={cat.name} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  cat.useVideo && cat.video ? (
+                    <VideoCategoryTile
+                      key={cat.id}
+                      videoSrc={cat.video}
+                      name={cat.name}
+                      tagline={cat.tagline}
+                      onClick={() => handleNavigation(cat.id)}
+                      animationDelay={`${idx * 100}ms`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-brand-950/90 via-brand-950/20 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-8 text-left translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                      <p className="text-brand-300 text-xs font-bold uppercase tracking-widest mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">{cat.tagline}</p>
-                      <h3 className="text-2xl font-serif font-bold text-white mb-2">{cat.name}</h3>
-                      <div className="flex items-center gap-2 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
-                        View Collection <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <button 
+                      key={cat.id}
+                      onClick={() => handleNavigation(cat.id)}
+                      className="group relative h-[450px] overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
+                      style={{ animationDelay: `${idx * 100}ms` }}
+                    >
+                      <img 
+                        src={cat.image} 
+                        alt={cat.name} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-brand-950/90 via-brand-950/20 to-transparent"></div>
+                      <div className="absolute bottom-0 left-0 right-0 p-8 text-left translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                        <p className="text-brand-300 text-xs font-bold uppercase tracking-widest mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">{cat.tagline}</p>
+                        <h3 className="text-2xl font-serif font-bold text-white mb-2">{cat.name}</h3>
+                        <div className="flex items-center gap-2 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                          View Collection <ChevronRight className="h-4 w-4" />
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                  )
                 ))}
               </div>
             </div>
