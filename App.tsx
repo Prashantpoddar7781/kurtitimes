@@ -21,30 +21,66 @@ const App: React.FC = () => {
     return [...PRODUCTS].sort(() => 0.5 - Math.random()).slice(0, 3);
   }, []);
 
-  // Category Configuration for Landing Page
+  // Category Configuration for Landing Page with random photos from D1-D4
+  const designImages = useMemo(() => {
+    const designs = {
+      D1: [
+        '/designs/D1/IMG-20251221-WA0005.jpg',
+        '/designs/D1/IMG-20251221-WA0006.jpg',
+        '/designs/D1/IMG-20251221-WA0033.jpg'
+      ],
+      D2: [
+        '/designs/D2/IMG-20251221-WA0003.jpg',
+        '/designs/D2/IMG-20251221-WA0016.jpg',
+        '/designs/D2/IMG-20251221-WA0017.jpg',
+        '/designs/D2/IMG-20251221-WA0027.jpg'
+      ],
+      D3: [
+        '/designs/D3/IMG-20251221-WA0001.jpg',
+        '/designs/D3/IMG-20251221-WA0004.jpg',
+        '/designs/D3/IMG-20251221-WA0012.jpg',
+        '/designs/D3/IMG-20251221-WA0036.jpg'
+      ],
+      D4: [
+        '/designs/D4/IMG-20251221-WA0022.jpg',
+        '/designs/D4/IMG-20251221-WA0030.jpg',
+        '/designs/D4/IMG-20251221-WA0032.jpg',
+        '/designs/D4/IMG-20251221-WA0038.jpg'
+      ]
+    };
+    
+    // Randomly select one image from each design folder
+    return {
+      D1: designs.D1[Math.floor(Math.random() * designs.D1.length)],
+      D2: designs.D2[Math.floor(Math.random() * designs.D2.length)],
+      D3: designs.D3[Math.floor(Math.random() * designs.D3.length)],
+      D4: designs.D4[Math.floor(Math.random() * designs.D4.length)]
+    };
+  }, []);
+
   const categoryTiles = [
     { 
       id: Category.KURTI_SET, 
       name: 'Kurti Sets', 
-      image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop',
+      image: designImages.D1,
       tagline: 'Timeless Traditions'
     },
     { 
       id: Category.INDO_WESTERN, 
       name: 'Indo Western', 
-      image: 'https://images.unsplash.com/photo-1594235372134-9093072f63e6?q=80&w=800&auto=format&fit=crop',
+      image: designImages.D2,
       tagline: 'Modern Fusion'
     },
     { 
       id: Category.COORD_SETS, 
       name: 'Co-ord Sets', 
-      image: 'https://images.unsplash.com/photo-1605763240000-7e93b172d754?q=80&w=800&auto=format&fit=crop',
+      image: designImages.D3,
       tagline: 'Chic & Matching'
     },
     { 
       id: Category.TUNICS, 
       name: 'Tunics', 
-      image: 'https://images.unsplash.com/photo-1583391725988-6490d0f799cd?q=80&w=800&auto=format&fit=crop',
+      image: designImages.D4,
       tagline: 'Everyday Comfort'
     },
   ];
