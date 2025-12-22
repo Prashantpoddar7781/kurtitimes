@@ -5,17 +5,21 @@ import { CURRENCY_SYMBOL } from '../constants';
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
+  onProductClick?: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProductClick }) => {
   return (
-    <div className="group relative bg-white overflow-hidden transition-all duration-300 flex flex-col h-full border-b border-r border-gray-100 last:border-r-0">
+    <div 
+      className="group relative bg-white overflow-hidden transition-all duration-300 flex flex-col h-full border-b border-r border-gray-100 last:border-r-0 cursor-pointer"
+      onClick={() => onProductClick?.(product)}
+    >
       {/* Image Container */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
         <img
           src={product.image}
           alt={product.name}
-          className="h-full w-full object-cover object-center"
+          className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
       </div>

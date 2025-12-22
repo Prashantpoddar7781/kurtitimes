@@ -33,7 +33,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
     e.preventDefault();
     
     const orderItems = cartItems.map(item => 
-      `• ${item.name} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+      `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
     ).join('\n');
     
     const message = `*New Order Request - Kurti Times* 🛍️\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}\n\n*Order Summary:*\n${orderItems}\n\n*Total Amount: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nPlease confirm availability and payment details.`;
@@ -101,6 +101,9 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                               <p className="ml-4">{CURRENCY_SYMBOL}{item.price * item.quantity}</p>
                             </div>
                             <p className="mt-1 text-sm text-gray-500">{item.category}</p>
+                            {item.selectedSize && (
+                              <p className="mt-1 text-xs text-gray-600">Size: {item.selectedSize}</p>
+                            )}
                           </div>
                           <div className="flex-1 flex items-end justify-between text-sm">
                             <div className="flex items-center border rounded-md">

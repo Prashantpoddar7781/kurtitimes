@@ -12,12 +12,18 @@ export interface Product {
   price: number;
   category: Category;
   image: string;
+  images?: string[]; // Multiple images for product detail
   description: string;
   rating: number;
+  topLength?: string;
+  pantLength?: string;
+  fabric?: string;
+  availableSizes?: string[];
 }
 
 export interface CartItem extends Product {
   quantity: number;
+  selectedSize?: string;
 }
 
 export interface ChatMessage {

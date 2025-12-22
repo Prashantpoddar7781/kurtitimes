@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
+import ProductDetail from './components/ProductDetail';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
@@ -13,6 +14,7 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeInfoPage, setActiveInfoPage] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Randomly select 3 best sellers for the Best Sellers page
   const bestSellers = useMemo(() => {
@@ -48,19 +50,31 @@ const App: React.FC = () => {
   ];
 
   // Cart actions
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, size?: string) => {
     setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const key = `${product.id}-${size || 'default'}`;
+      const existing = prev.find(item => `${item.id}-${item.selectedSize || 'default'}` === key);
       if (existing) {
         return prev.map(item => 
-          item.id === product.id 
+          `${item.id}-${item.selectedSize || 'default'}` === key
             ? { ...item, quantity: item.quantity + 1 } 
             : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, selectedSize: size }];
     });
     setIsCartOpen(true);
+    setSelectedProduct(null);
+  };
+
+  const buyNow = (product: Product, size?: string) => {
+    addToCart(product, size);
+    // In a real app, this would navigate to checkout
+    // For now, just open cart
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
   };
 
   const updateQuantity = (id: number, delta: number) => {
@@ -142,7 +156,7 @@ const App: React.FC = () => {
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-gray-100">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+              <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
             ))}
           </div>
         </div>
@@ -162,7 +176,7 @@ const App: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-0 border-t border-l border-gray-100">
                {bestSellers.map((product) => (
-                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
                ))}
             </div>
           </div>
@@ -286,10 +300,19 @@ const App: React.FC = () => {
         activePage={currentView}
       />
 
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={addToCart}
+          onBuyNow={buyNow}
+        />
+      )}
+
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} />
       <InfoModal isOpen={!!activeInfoPage} onClose={() => setActiveInfoPage(null)} title={getModalTitle()}>{renderInfoContent()}</InfoModal>
 
-      <div className="flex-grow">{renderContent()}</div>
+      {!selectedProduct && <div className="flex-grow">{renderContent()}</div>}
 
       {/* Mobile Sticky Navigation (only on product pages) */}
       {Object.values(Category).includes(currentView as Category) && currentView !== Category.ALL && (
