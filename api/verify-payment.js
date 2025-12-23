@@ -2,40 +2,54 @@
 const crypto = require('crypto');
 
 module.exports = async (req, res) => {
-  // Enable CORS
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse request body
+    // Vercel automatically parses JSON body
     let body = req.body;
+    
+    // If body is a string, parse it
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
       } catch (e) {
         return res.status(400).json({ 
-          error: 'Invalid JSON in request body' 
+          error: 'Invalid JSON in request body',
+          details: e.message 
         });
       }
     }
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    // Extract payment details
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body || {};
 
+    // Validate required fields
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ 
-        error: 'Missing payment verification parameters' 
+        error: 'Missing payment verification parameters',
+        received: {
+          hasOrderId: !!razorpay_order_id,
+          hasPaymentId: !!razorpay_payment_id,
+          hasSignature: !!razorpay_signature
+        }
       });
     }
 
+    // Get key secret from environment
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
     
     if (!keySecret) {
@@ -46,21 +60,22 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Generate signature for verification
     const text = `${razorpay_order_id}|${razorpay_payment_id}`;
     const generated_signature = crypto
       .createHmac('sha256', keySecret)
       .update(text)
       .digest('hex');
 
+    // Verify signature
     const isSignatureValid = generated_signature === razorpay_signature;
 
     if (isSignatureValid) {
       // Payment verified successfully
-      // Here you would typically:
-      // 1. Save order to database
-      // 2. Send confirmation email
-      // 3. Update inventory
-      // 4. Send notification to admin
+      console.log('Payment verified successfully:', {
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id
+      });
 
       return res.status(200).json({
         success: true,
@@ -69,17 +84,23 @@ module.exports = async (req, res) => {
         paymentId: razorpay_payment_id,
       });
     } else {
+      console.error('Payment verification failed - Invalid signature');
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed - Invalid signature',
       });
     }
   } catch (error) {
-    console.error('Error verifying payment:', error);
+    console.error('Error verifying payment:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+
     return res.status(500).json({ 
       error: 'Failed to verify payment',
-      message: error.message || 'Unknown error occurred'
+      message: error.message || 'Unknown error occurred',
+      type: error.name || 'Error'
     });
   }
 };
-
