@@ -24,9 +24,19 @@ module.exports = async (req, res) => {
       });
     }
 
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    
+    if (!keySecret) {
+      console.error('Missing RAZORPAY_KEY_SECRET in environment variables');
+      return res.status(500).json({ 
+        error: 'Server configuration error',
+        message: 'Payment verification not configured properly.'
+      });
+    }
+
     const text = `${razorpay_order_id}|${razorpay_payment_id}`;
     const generated_signature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '2xrHIReHqhLfWAH035dZM0vy')
+      .createHmac('sha256', keySecret)
       .update(text)
       .digest('hex');
 

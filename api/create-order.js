@@ -16,9 +16,21 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Get credentials from environment variables (set in Vercel Dashboard)
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.error('Missing Razorpay credentials. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel Dashboard.');
+      return res.status(500).json({ 
+        error: 'Server configuration error',
+        message: 'Razorpay credentials not configured. Please contact support.'
+      });
+    }
+
     const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_Rv4c4iUwni06DQ',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || '2xrHIReHqhLfWAH035dZM0vy',
+      key_id: keyId,
+      key_secret: keySecret,
     });
 
     const { amount, currency = 'INR', receipt, notes } = req.body;

@@ -4,30 +4,10 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
-  "functions": {
-    "api/create-order.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/verify-payment.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
-    {
-      "source": "/api/create-order",
-      "destination": "/api/create-order.js"
-    },
-    {
-      "source": "/api/verify-payment",
-      "destination": "/api/verify-payment.js"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "env": {
-    "RAZORPAY_KEY_ID": "rzp_test_Rv4c4iUwni06DQ",
-    "RAZORPAY_KEY_SECRET": "2xrHIReHqhLfWAH035dZM0vy"
-  }
+  ]
 }
