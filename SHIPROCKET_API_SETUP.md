@@ -1,172 +1,207 @@
 # 🔑 Shiprocket API Credentials - Step by Step Guide
 
-## 📍 Where to Find API Credentials in Shiprocket
+## 📍 How to Get API Credentials in Shiprocket
 
-### Step 1: Log in to Shiprocket
+Shiprocket uses **API Users** (not tokens). You need to create a dedicated API user account.
 
-1. Go to **https://www.shiprocket.in**
-2. Click **Login** (top right)
-3. Enter your email and password
-4. Click **Login**
+### Step 1: Navigate to API Users
 
-### Step 2: Navigate to API Settings
+1. **Log in to Shiprocket:**
+   - Go to **https://app.shiprocket.in**
+   - Log in with your account
 
-Once logged in:
+2. **Go to Settings:**
+   - Click on **Settings** (gear icon in left sidebar)
+   - Click on **"Additional Settings"** in the left menu
+   - Click on **"API Users"**
 
-1. **Click on your profile/account icon** (usually top right corner)
-2. From the dropdown menu, select **"Settings"** or **"My Account"**
-3. In the left sidebar, look for **"API Settings"** or **"Developer Settings"**
-4. Click on **"API Settings"**
+   **Direct Link:** https://app.shiprocket.in/sellers/settings/additional-settings/api-users
 
-**Alternative Path:**
-- Go directly to: **https://app.shiprocket.in/settings/api-settings**
-- Or: Dashboard → Settings → API Settings
+### Step 2: Create New API User
 
-### Step 3: Generate API Credentials
+1. **Click "+ Add New API User" button**
+   - You'll see this button at the top right or bottom center
 
-In the API Settings page:
+2. **Fill in the "Add New User" form:**
 
-1. **You'll see two options:**
-   - **Email & Password** (for authentication)
-   - **API Token** (recommended for server-side)
+   **Email ID:**
+   - Enter a unique email address (can be different from your main account)
+   - Example: `api@kurtitimes.com` or `shiprocket-api@yourdomain.com`
+   - ⚠️ **Required field** - must be filled
 
-2. **For API Token (Recommended):**
-   - Click on **"Generate Token"** or **"Create Token"**
-   - Give it a name (e.g., "Kurti Times Website")
-   - Click **"Generate"** or **"Create"**
-   - **IMPORTANT:** Copy the token immediately - it's shown only once!
-   - Save it securely
+   **Allowed IPs for PII Access (Optional):**
+   - Add comma-separated IP addresses if you want to restrict access
+   - Leave empty for now (can add later)
+   - Example: `192.168.1.1, 203.0.113.0`
 
-3. **You'll need:**
-   - **Email:** Your Shiprocket login email
-   - **Password:** Your Shiprocket login password
-   - **API Token:** The generated token (if using token auth)
+   **Select Modules to Access:**
+   - Check the modules you need:
+     - ✅ **Orders (create, update)** - Required for creating shipments
+     - ✅ **Shipments** - Required for shipping management
+     - ✅ **Courier** - Required for getting shipping rates
+     - ⚠️ **Settings** - Optional (for account settings)
+     - ⚠️ **Listings** - Optional (for product listings)
 
-### Step 4: What You'll Get
+3. **Click "Apply" button**
+   - The API user will be created
+   - You'll receive an email with the password (or set it manually)
 
-You'll receive:
-- ✅ **Email** (your Shiprocket account email)
-- ✅ **Password** (your Shiprocket account password)
-- ✅ **API Token** (if generated - recommended)
+### Step 3: Get Your Credentials
 
-## 🔐 Two Authentication Methods
+After creating the API user:
 
-### Method 1: Email & Password (Basic)
-- Use your Shiprocket login credentials
-- Simpler but less secure
-- Good for testing
+1. **Email:** The email you entered in the form
+2. **Password:** 
+   - Check your email (Shiprocket sends password via email)
+   - OR reset password if needed
+   - OR set a custom password
 
-### Method 2: API Token (Recommended)
-- More secure
-- Can be revoked independently
-- Better for production
+3. **Note the credentials:**
+   - Email: `your-api-user@example.com`
+   - Password: `password-from-email`
 
-## 📝 Where to Add Credentials
+### Step 4: Add to Vercel Environment Variables
 
-Once you have the credentials, add them to **Vercel Environment Variables**:
+1. **Go to Vercel Dashboard:**
+   - Visit https://vercel.com/dashboard
+   - Select your `kurtitimes` project
 
-1. Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment Variables**
+2. **Add Environment Variables:**
+   - Go to **Settings** → **Environment Variables**
 
-2. Add these variables:
+   **Add these variables:**
 
    **Variable 1:**
    - Name: `SHIPROCKET_EMAIL`
-   - Value: `your-shiprocket-email@example.com`
+   - Value: `your-api-user-email@example.com` (the email you created)
    - Environments: ✅ Production ✅ Preview ✅ Development
 
    **Variable 2:**
    - Name: `SHIPROCKET_PASSWORD`
-   - Value: `your-shiprocket-password`
-   - Environments: ✅ Production ✅ Preview ✅ Development
-
-   **Variable 3 (If using Token):**
-   - Name: `SHIPROCKET_API_TOKEN`
-   - Value: `your-generated-api-token`
+   - Value: `password-from-email` (the password for API user)
    - Environments: ✅ Production ✅ Preview ✅ Development
 
 3. **Redeploy** after adding variables
 
-## 🔍 Visual Guide
+## 📋 Recommended Modules to Select
 
-### API Settings Page Location:
+For shipping integration, select these modules:
 
-```
-Shiprocket Dashboard
-  └── Settings (Top Right → Profile → Settings)
-      └── API Settings (Left Sidebar)
-          ├── Email & Password
-          └── API Token (Generate New Token)
-```
+- ✅ **Orders (create, update)** - Essential
+- ✅ **Shipments** - Essential  
+- ✅ **Courier** - Essential for shipping rates
+- ⚠️ **Settings** - Optional
+- ⚠️ **Listings** - Optional
 
-### What the Page Looks Like:
+## 🔐 Security Best Practices
 
-```
-┌─────────────────────────────────────┐
-│  API Settings                       │
-├─────────────────────────────────────┤
-│                                      │
-│  Email & Password Authentication    │
-│  ┌──────────────────────────────┐  │
-│  │ Email: your@email.com         │  │
-│  │ Password: ********            │  │
-│  └──────────────────────────────┘  │
-│                                      │
-│  API Token                          │
-│  ┌──────────────────────────────┐  │
-│  │ [Generate Token] Button      │  │
-│  │ Token Name: [________]        │  │
-│  └──────────────────────────────┘  │
-│                                      │
-│  Generated Tokens:                  │
-│  • Kurti Times Website (Active)    │
-│  • Token: sr_xxxxxxxxxxxxx          │
-│                                      │
-└─────────────────────────────────────┘
-```
+1. **Use a Dedicated Email:**
+   - Don't use your main Shiprocket account email
+   - Create a separate email for API access
+   - Example: `api@yourdomain.com`
 
-## ⚠️ Important Notes
+2. **IP Restrictions (Optional):**
+   - Add your server IPs for extra security
+   - Leave empty if your server IP changes
 
-1. **API Token Security:**
-   - Tokens are shown only once when generated
-   - Copy and save immediately
-   - Store securely (use environment variables, not code)
+3. **Password Security:**
+   - Use a strong, unique password
+   - Store in environment variables only
+   - Never commit to code
 
-2. **Token Management:**
-   - You can generate multiple tokens
-   - Each token can be revoked independently
-   - Useful for different environments (dev, staging, prod)
+## 🧪 Test Your API Credentials
 
-3. **Rate Limits:**
-   - Shiprocket has API rate limits
-   - Check your plan for limits
-   - Usually 100-1000 requests per hour
-
-4. **Testing:**
-   - Use test mode first
-   - Verify credentials work
-   - Then switch to production
-
-## 🧪 Test Your Credentials
-
-After getting credentials, test them:
+After creating the API user, test the credentials:
 
 ```bash
-# Test API connection
+# Test API login
 curl -X POST https://apiv2.shiprocket.in/v1/external/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "your-email@example.com",
-    "password": "your-password"
+    "email": "your-api-user-email@example.com",
+    "password": "your-api-password"
   }'
 ```
 
-Expected response:
+**Expected Response:**
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "expires_in": 86400
 }
 ```
+
+If you get a token, your credentials are working! ✅
+
+## 📝 What You'll See
+
+### API Users Page:
+- Shows list of all API users
+- Status (Active/Inactive)
+- Action buttons (Edit, Reset Password, etc.)
+
+### Add New User Modal:
+- Email ID field (required)
+- Allowed IPs field (optional)
+- Module checkboxes:
+  - Orders (create, update)
+  - Settings
+  - Shipments
+  - Listings
+  - Courier
+
+## ⚠️ Important Notes
+
+1. **Email Must Be Unique:**
+   - Cannot use an email already registered in Shiprocket
+   - Use a different email than your main account
+
+2. **Password:**
+   - Shiprocket sends password via email
+   - You can reset it later if needed
+   - Keep it secure
+
+3. **Module Access:**
+   - Select only what you need
+   - Can be updated later
+   - More modules = more access
+
+4. **Status:**
+   - Users can be Active or Inactive
+   - Inactive users cannot access API
+
+## 🔄 Managing API Users
+
+After creating an API user, you can:
+
+1. **Edit User:**
+   - Click on user → Edit
+   - Change modules, IPs, etc.
+
+2. **Reset Password:**
+   - Click "Reset Password"
+   - New password sent via email
+
+3. **Activate/Deactivate:**
+   - Toggle status
+   - Inactive users cannot use API
+
+## 🆘 Troubleshooting
+
+### Can't Create API User?
+- Check if email is already used
+- Verify you have permission to create API users
+- Contact Shiprocket support if needed
+
+### Password Not Received?
+- Check spam folder
+- Try resetting password
+- Contact Shiprocket support
+
+### API Not Working?
+- Verify modules are selected correctly
+- Check if user is Active
+- Test credentials with curl command above
 
 ## 📚 Shiprocket API Documentation
 
@@ -175,35 +210,20 @@ Expected response:
 - **Shipping Rates:** https://apidocs.shiprocket.in/shipping-rates
 - **Create Order:** https://apidocs.shiprocket.in/create-order
 
-## 🆘 Can't Find API Settings?
-
-If you can't find API Settings:
-
-1. **Check Account Type:**
-   - Some account types may not have API access
-   - Contact Shiprocket support to enable API access
-
-2. **Contact Support:**
-   - Email: support@shiprocket.in
-   - Phone: 1800-123-1234
-   - Live Chat: Available on website
-
-3. **Verify Account:**
-   - Complete KYC verification
-   - Some features unlock after verification
-
 ## ✅ Quick Checklist
 
 - [ ] Logged into Shiprocket dashboard
-- [ ] Navigated to Settings → API Settings
-- [ ] Generated API Token (or noted Email/Password)
-- [ ] Copied credentials securely
-- [ ] Added to Vercel environment variables
+- [ ] Navigated to Settings → Additional Settings → API Users
+- [ ] Clicked "+ Add New API User"
+- [ ] Entered unique email address
+- [ ] Selected required modules (Orders, Shipments, Courier)
+- [ ] Clicked "Apply"
+- [ ] Received password via email
+- [ ] Added credentials to Vercel environment variables
 - [ ] Tested API connection
 - [ ] Ready to integrate!
 
 ---
 
-**Location:** Dashboard → Settings → API Settings  
-**Direct Link:** https://app.shiprocket.in/settings/api-settings
-
+**Location:** Settings → Additional Settings → API Users  
+**Direct Link:** https://app.shiprocket.in/sellers/settings/additional-settings/api-users
