@@ -4,6 +4,7 @@ import { CartItem } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import { initiatePayment } from '../services/razorpayService';
 import { calculateShipping, validatePincode, ShippingAddress } from '../services/shippingService';
+import { createShipment } from '../services/shiprocketService';
 
 interface CartModalProps {
   isOpen: boolean;
