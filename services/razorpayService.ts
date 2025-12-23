@@ -48,33 +48,88 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
       throw new Error('Razorpay SDK not available');
     }
 
-    // For production, you should create an order on your backend first
-    // and get the order_id from there. For now, we'll use a client-side approach
-    // Get Razorpay Key ID from window variable or environment
-    const razorpayKeyId = window.RAZORPAY_KEY_ID || 'YOUR_RAZORPAY_KEY_ID'; // Replace with your actual Key ID in index.html
+    // Get Razorpay Key ID from window variable
+    const razorpayKeyId = window.RAZORPAY_KEY_ID || 'rzp_test_Rv4c4iUwni06DQ';
     
+    // Create order on backend first
+    const orderResponse = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: options.amount,
+        currency: options.currency || 'INR',
+        receipt: `receipt_${Date.now()}`,
+        notes: {
+          description: options.description,
+          customer_name: options.name,
+          customer_phone: options.phone,
+          customer_email: options.email || '',
+        },
+      }),
+    });
+
+    if (!orderResponse.ok) {
+      const error = await orderResponse.json();
+      throw new Error(error.error || 'Failed to create order');
+    }
+
+    const orderData = await orderResponse.json();
+
+    // Initialize Razorpay with order details
     const razorpayOptions = {
       key: razorpayKeyId,
-      amount: options.amount, // Amount in paise
-      currency: options.currency || 'INR',
+      amount: orderData.amount,
+      currency: orderData.currency,
+      order_id: orderData.orderId,
       name: 'Kurti Times',
       description: options.description,
-      image: '/logo.jpg', // Your logo
+      image: '/logo.jpg',
       prefill: {
         name: options.name,
         contact: options.phone,
         email: options.email || '',
       },
       theme: {
-        color: '#be185d', // Brand color
+        color: '#be185d',
       },
-      handler: function (response: any) {
-        // Payment success
-        options.onSuccess(response.razorpay_payment_id, response.razorpay_order_id || '');
+      handler: async function (response: any) {
+        // Verify payment on backend
+        try {
+          const verifyResponse = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            // Payment verified successfully
+            options.onSuccess(response.razorpay_payment_id, response.razorpay_order_id);
+          } else {
+            // Payment verification failed
+            options.onFailure({ 
+              code: 'VERIFICATION_FAILED', 
+              message: verifyData.error || 'Payment verification failed' 
+            });
+          }
+        } catch (verifyError: any) {
+          options.onFailure({ 
+            code: 'VERIFICATION_ERROR', 
+            message: verifyError.message || 'Failed to verify payment' 
+          });
+        }
       },
       modal: {
         ondismiss: function () {
-          // User closed the payment modal
           options.onFailure({ code: 'USER_CLOSED', message: 'Payment cancelled by user' });
         },
       },
@@ -82,7 +137,7 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
 
     const razorpay = new window.Razorpay(razorpayOptions);
     razorpay.open();
-  } catch (error) {
+  } catch (error: any) {
     options.onFailure(error);
   }
 };
