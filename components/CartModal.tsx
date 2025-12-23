@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, CreditCard, CheckCircle } from 'lucide-react';
 import { CartItem } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
+import { initiatePayment } from '../services/razorpayService';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -12,9 +13,11 @@ interface CartModalProps {
 }
 
 const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) => {
-  const [step, setStep] = useState<'cart' | 'checkout'>('cart');
+  const [step, setStep] = useState<'cart' | 'checkout' | 'success'>('cart');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -22,25 +25,65 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       setStep('cart');
       setName('');
       setPhone('');
+      setEmail('');
+      setIsProcessing(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const amountInPaise = Math.round(total * 100); // Convert to paise
 
-  const handleCheckout = (e: React.FormEvent) => {
+  const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (amountInPaise < 100) {
+      alert('Minimum order amount is ₹1.00');
+      return;
+    }
+
+    setIsProcessing(true);
+
     const orderItems = cartItems.map(item => 
-      `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
-    ).join('\n');
-    
-    const message = `*New Order Request - Kurti Times* 🛍️\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}\n\n*Order Summary:*\n${orderItems}\n\n*Total Amount: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nPlease confirm availability and payment details.`;
-    
-    const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    onClose();
+      `${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} x${item.quantity}`
+    ).join(', ');
+
+    try {
+      await initiatePayment({
+        amount: amountInPaise,
+        currency: 'INR',
+        name: name,
+        phone: phone,
+        email: email || undefined,
+        description: `Order from Kurti Times - ${orderItems}`,
+        onSuccess: (paymentId, orderId) => {
+          setIsProcessing(false);
+          setStep('success');
+          
+          // Send order confirmation via WhatsApp
+          const orderDetails = cartItems.map(item => 
+            `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+          ).join('\n');
+          
+          const message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Order Summary:*\n${orderDetails}\n\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
+          
+          setTimeout(() => {
+            const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+          }, 2000);
+        },
+        onFailure: (error) => {
+          setIsProcessing(false);
+          if (error.code !== 'USER_CLOSED') {
+            alert(`Payment failed: ${error.message || 'Please try again'}`);
+          }
+        },
+      });
+    } catch (error: any) {
+      setIsProcessing(false);
+      alert(`Error initiating payment: ${error.message || 'Please try again'}`);
+    }
   };
 
   return (
@@ -53,13 +96,13 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-6 bg-brand-50 border-b border-brand-100">
             <div className="flex items-center gap-2">
-              {step === 'checkout' && (
-                <button onClick={() => setStep('cart')} className="mr-2 text-brand-900 hover:text-brand-700">
+              {(step === 'checkout' || step === 'success') && (
+                <button onClick={() => step === 'checkout' ? setStep('cart') : setStep('cart')} className="mr-2 text-brand-900 hover:text-brand-700">
                   <ArrowLeft className="h-5 w-5" />
                 </button>
               )}
               <h2 className="text-lg font-serif font-bold text-brand-900">
-                {step === 'cart' ? 'Your Shopping Bag' : 'Checkout Details'}
+                {step === 'cart' ? 'Your Shopping Bag' : step === 'checkout' ? 'Checkout Details' : 'Order Confirmed'}
               </h2>
             </div>
             <button onClick={onClose} className="text-brand-900 hover:text-brand-700">
@@ -136,8 +179,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                   </ul>
                 )}
               </>
-            ) : (
-              <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6">
+            ) : step === 'checkout' ? (
+              <form id="checkout-form" onSubmit={handlePayment} className="space-y-6">
                  <div className="bg-brand-50 p-4 rounded-lg mb-6">
                     <h3 className="font-medium text-brand-900 mb-2">Order Summary</h3>
                     <div className="text-sm text-gray-600 space-y-1">
@@ -153,7 +196,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                  </div>
 
                  <div>
-                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name *</label>
                    <input 
                      type="text" 
                      id="name" 
@@ -166,25 +209,57 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                  </div>
 
                  <div>
-                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
+                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number *</label>
                    <input 
                      type="tel" 
                      id="phone" 
                      required
                      value={phone}
                      onChange={(e) => setPhone(e.target.value)}
+                     pattern="[0-9]{10}"
+                     maxLength={10}
                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                      placeholder="Enter 10-digit mobile number"
                    />
                  </div>
 
-                 <div className="bg-green-50 p-3 rounded-md flex items-start gap-3">
-                   <MessageCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                   <p className="text-sm text-green-800">
-                     Your order details will be sent directly to our WhatsApp number (+91 9892794421) for processing.
+                 <div>
+                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address (Optional)</label>
+                   <input 
+                     type="email" 
+                     id="email" 
+                     value={email}
+                     onChange={(e) => setEmail(e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                     placeholder="Enter your email"
+                   />
+                 </div>
+
+                 <div className="bg-blue-50 p-3 rounded-md flex items-start gap-3">
+                   <CreditCard className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                   <p className="text-sm text-blue-800">
+                     Secure payment powered by Razorpay. All transactions are encrypted and secure.
                    </p>
                  </div>
               </form>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <div className="bg-green-50 p-4 rounded-full mb-4">
+                  <CheckCircle className="h-12 w-12 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
+                <p className="text-gray-600 mb-4">Thank you for your order.</p>
+                <p className="text-sm text-gray-500">Order confirmation has been sent to WhatsApp.</p>
+                <button
+                  onClick={() => {
+                    onClose();
+                    window.location.reload();
+                  }}
+                  className="mt-6 px-6 py-2 bg-brand-700 text-white rounded-lg hover:bg-brand-800 transition-colors"
+                >
+                  Continue Shopping
+                </button>
+              </div>
             )}
           </div>
 
@@ -204,16 +279,26 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                     Proceed to Checkout
                   </button>
                 </>
-              ) : (
+              ) : step === 'checkout' ? (
                 <button
                   type="submit"
                   form="checkout-form"
-                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-[#25D366] hover:bg-[#128C7E] transition-colors gap-2"
+                  disabled={isProcessing}
+                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-brand-700 hover:bg-brand-800 transition-colors gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <MessageCircle className="h-5 w-5" />
-                  Place Order via WhatsApp
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-5 w-5" />
+                      Pay {CURRENCY_SYMBOL}{total.toLocaleString('en-IN')}
+                    </>
+                  )}
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

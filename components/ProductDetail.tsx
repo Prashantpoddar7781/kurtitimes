@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
-import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle, CreditCard } from 'lucide-react';
 import SizeChartModal from './SizeChartModal';
+import { initiatePayment } from '../services/razorpayService';
 
 interface ProductDetailProps {
   product: Product;
@@ -219,4 +220,5 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
 };
 
 export default ProductDetail;
+
 

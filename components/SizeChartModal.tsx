@@ -78,3 +78,4 @@ const SizeChartModal: React.FC<SizeChartModalProps> = ({ isOpen, onClose }) => {
 
 export default SizeChartModal;
 
+

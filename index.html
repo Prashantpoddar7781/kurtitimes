@@ -72,6 +72,12 @@
 </head>
   <body>
     <div id="root"></div>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    // Set Razorpay Key ID here or use environment variable
+    // Replace 'YOUR_RAZORPAY_KEY_ID' with your actual Razorpay Key ID
+    window.RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';
+  </script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>

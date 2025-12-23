@@ -109,10 +109,18 @@ const App: React.FC = () => {
     setSelectedProduct(null);
   };
 
-  const buyNow = (product: Product, size?: string) => {
+  const buyNow = async (product: Product, size?: string) => {
+    if (!size) {
+      alert('Please select a size');
+      return;
+    }
+    
+    // Add to cart first
     addToCart(product, size);
-    // In a real app, this would navigate to checkout
-    // For now, just open cart
+    
+    // Open checkout modal with payment
+    setIsCartOpen(true);
+    // The cart modal will handle the payment flow
   };
 
   const handleProductClick = (product: Product) => {
