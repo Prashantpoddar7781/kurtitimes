@@ -98,23 +98,92 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         phone: phone,
         email: email || undefined,
         description: `Order from Kurti Times - ${orderItems}`,
-        onSuccess: (paymentId, orderId) => {
+        onSuccess: async (paymentId, orderId) => {
           setIsProcessing(false);
-          setStep('success');
           
-          // Send order confirmation via WhatsApp with shipping address
-          const orderDetails = cartItems.map(item => 
-            `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
-          ).join('\n');
-          
-          const shippingAddress = `${addressLine1}${addressLine2 ? `, ${addressLine2}` : ''}, ${city}, ${state} - ${pincode}`;
-          
-          const message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Shipping Address:*\n📍 ${shippingAddress}\n\n*Order Summary:*\n${orderDetails}\n\n*Subtotal: ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}*\n*Shipping: ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}*\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
-          
-          setTimeout(() => {
-            const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, '_blank');
-          }, 2000);
+          // Create shipment in Shiprocket
+          try {
+            const shipmentData = {
+              order_id: `KT-${Date.now()}`,
+              order_date: new Date().toISOString(),
+              pickup_location: 'Default', // Update this with your pickup location name from Shiprocket
+              billing_customer_name: name.split(' ')[0] || name,
+              billing_last_name: name.split(' ').slice(1).join(' ') || '',
+              billing_address: addressLine1,
+              billing_address_2: addressLine2 || '',
+              billing_city: city,
+              billing_pincode: pincode,
+              billing_state: state,
+              billing_country: 'India',
+              billing_email: email || phone + '@temp.com',
+              billing_phone: phone,
+              shipping_is_billing: true,
+              shipping_customer_name: name.split(' ')[0] || name,
+              shipping_last_name: name.split(' ').slice(1).join(' ') || '',
+              shipping_address: addressLine1,
+              shipping_address_2: addressLine2 || '',
+              shipping_city: city,
+              shipping_pincode: pincode,
+              shipping_state: state,
+              shipping_country: 'India',
+              shipping_email: email || phone + '@temp.com',
+              shipping_phone: phone,
+              order_items: cartItems.map((item) => ({
+                name: item.name,
+                sku: `SKU-${item.id}-${item.selectedSize || 'M'}`,
+                units: item.quantity,
+                selling_price: item.price,
+              })),
+              payment_method: 'Prepaid',
+              sub_total: subtotal,
+              length: 20,
+              breadth: 15,
+              height: 5,
+              weight: Math.max(0.5, cartItems.length * 0.3),
+            };
+
+            const shipment = await createShipment(shipmentData);
+            
+            setStep('success');
+            
+            // Send order confirmation via WhatsApp with shipping address and tracking
+            const orderDetails = cartItems.map(item => 
+              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+            ).join('\n');
+            
+            const shippingAddress = `${addressLine1}${addressLine2 ? `, ${addressLine2}` : ''}, ${city}, ${state} - ${pincode}`;
+            
+            let message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}`;
+            
+            if (shipment.shipment_id) {
+              message += `\n*Shipment ID:* ${shipment.shipment_id}\n*AWB Code:* ${shipment.awb_code || 'Pending'}\n*Courier:* ${shipment.courier_name || 'TBD'}`;
+            }
+            
+            message += `\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Shipping Address:*\n📍 ${shippingAddress}\n\n*Order Summary:*\n${orderDetails}\n\n*Subtotal: ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}*\n*Shipping: ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}*\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
+            
+            setTimeout(() => {
+              const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
+              window.open(whatsappUrl, '_blank');
+            }, 2000);
+          } catch (shipError: any) {
+            // If Shiprocket fails, still show success but log error
+            console.error('Shiprocket error:', shipError);
+            setStep('success');
+            
+            // Send order confirmation without shipment details
+            const orderDetails = cartItems.map(item => 
+              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+            ).join('\n');
+            
+            const shippingAddress = `${addressLine1}${addressLine2 ? `, ${addressLine2}` : ''}, ${city}, ${state} - ${pincode}`;
+            
+            const message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Shipping Address:*\n📍 ${shippingAddress}\n\n*Order Summary:*\n${orderDetails}\n\n*Subtotal: ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}*\n*Shipping: ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}*\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
+            
+            setTimeout(() => {
+              const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
+              window.open(whatsappUrl, '_blank');
+            }, 2000);
+          }
         },
         onFailure: (error) => {
           setIsProcessing(false);
