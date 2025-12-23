@@ -5,6 +5,7 @@
 declare global {
   interface Window {
     Razorpay: any;
+    RAZORPAY_KEY_ID?: string;
   }
 }
 
@@ -49,8 +50,11 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
 
     // For production, you should create an order on your backend first
     // and get the order_id from there. For now, we'll use a client-side approach
+    // Get Razorpay Key ID from window variable or environment
+    const razorpayKeyId = window.RAZORPAY_KEY_ID || 'YOUR_RAZORPAY_KEY_ID'; // Replace with your actual Key ID in index.html
+    
     const razorpayOptions = {
-      key: process.env.RAZORPAY_KEY_ID || 'YOUR_RAZORPAY_KEY_ID', // Replace with your Razorpay Key ID
+      key: razorpayKeyId,
       amount: options.amount, // Amount in paise
       currency: options.currency || 'INR',
       name: 'Kurti Times',
