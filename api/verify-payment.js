@@ -16,7 +16,19 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    // Parse request body
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        return res.status(400).json({ 
+          error: 'Invalid JSON in request body' 
+        });
+      }
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ 
@@ -50,23 +62,23 @@ module.exports = async (req, res) => {
       // 3. Update inventory
       // 4. Send notification to admin
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: 'Payment verified successfully',
         orderId: razorpay_order_id,
         paymentId: razorpay_payment_id,
       });
     } else {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         error: 'Payment verification failed - Invalid signature',
       });
     }
   } catch (error) {
     console.error('Error verifying payment:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Failed to verify payment',
-      message: error.message 
+      message: error.message || 'Unknown error occurred'
     });
   }
 };

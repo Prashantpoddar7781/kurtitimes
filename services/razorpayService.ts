@@ -71,8 +71,16 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
     });
 
     if (!orderResponse.ok) {
-      const error = await orderResponse.json();
-      throw new Error(error.error || 'Failed to create order');
+      let errorMessage = 'Failed to create order';
+      try {
+        const error = await orderResponse.json();
+        errorMessage = error.error || error.message || errorMessage;
+      } catch (e) {
+        // If response is not JSON, get text
+        const text = await orderResponse.text();
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const orderData = await orderResponse.json();

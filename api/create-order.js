@@ -16,15 +16,27 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Parse request body
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        return res.status(400).json({ 
+          error: 'Invalid JSON in request body' 
+        });
+      }
+    }
+
     // Get credentials from environment variables (set in Vercel Dashboard)
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      console.error('Missing Razorpay credentials. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel Dashboard.');
+      console.error('Missing Razorpay credentials');
       return res.status(500).json({ 
         error: 'Server configuration error',
-        message: 'Razorpay credentials not configured. Please contact support.'
+        message: 'Razorpay credentials not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel Dashboard.'
       });
     }
 
@@ -33,7 +45,7 @@ module.exports = async (req, res) => {
       key_secret: keySecret,
     });
 
-    const { amount, currency = 'INR', receipt, notes } = req.body;
+    const { amount, currency = 'INR', receipt, notes } = body;
 
     if (!amount || amount < 100) {
       return res.status(400).json({ 
@@ -50,7 +62,7 @@ module.exports = async (req, res) => {
 
     const order = await razorpay.orders.create(options);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       orderId: order.id,
       amount: order.amount,
@@ -58,9 +70,9 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Failed to create order',
-      message: error.message 
+      message: error.message || 'Unknown error occurred'
     });
   }
 };
