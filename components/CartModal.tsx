@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, CreditCard, CheckCircle, Truck } from 'lucide-react';
 import { CartItem } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
-import { initiatePayment } from '../services/razorpayService';
+import { initiatePayment } from '../services/cashfreeService';
 import { calculateShipping, validatePincode, ShippingAddress } from '../services/shippingService';
 import { createShipment } from '../services/shiprocketService';
 
