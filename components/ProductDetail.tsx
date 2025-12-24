@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle, CreditCard } from 'lucide-react';
@@ -18,7 +18,31 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
   const [showSizeChart, setShowSizeChart] = useState(false);
 
   const images = product.images || [product.image];
-  const availableSizes = product.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+  
+  // Filter out sizes with 0 stock
+  const getAvailableSizes = () => {
+    const allSizes = product.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    
+    // If stockBySize exists, filter out sizes with 0 stock
+    if (product.stockBySize && Object.keys(product.stockBySize).length > 0) {
+      return allSizes.filter(size => {
+        const stock = product.stockBySize![size] || 0;
+        return stock > 0;
+      });
+    }
+    
+    // If no stockBySize, show all available sizes (backward compatibility)
+    return allSizes;
+  };
+  
+  const availableSizes = getAvailableSizes();
+
+  // Reset selected size if it's no longer available
+  useEffect(() => {
+    if (selectedSize && !availableSizes.includes(selectedSize)) {
+      setSelectedSize('');
+    }
+  }, [availableSizes, selectedSize]);
 
   const nextImage = () => {
     setSelectedImageIndex((prev) => (prev + 1) % images.length);
@@ -135,28 +159,36 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-bold text-gray-900 uppercase">Size</label>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {availableSizes.map((size) => (
+                {availableSizes.length > 0 ? (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {availableSizes.map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => setSelectedSize(size)}
+                          className={`px-6 py-3 border-2 rounded-lg font-medium transition-all ${
+                            selectedSize === size
+                              ? 'border-brand-700 bg-brand-50 text-brand-700'
+                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
                     <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`px-6 py-3 border-2 rounded-lg font-medium transition-all ${
-                        selectedSize === size
-                          ? 'border-brand-700 bg-brand-50 text-brand-700'
-                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                      }`}
+                      onClick={() => setShowSizeChart(true)}
+                      className="mt-4 flex items-center gap-2 text-brand-700 hover:text-brand-800 transition-colors"
                     >
-                      {size}
+                      <Ruler className="h-4 w-4" />
+                      <span className="text-sm font-medium">SIZE CHART</span>
                     </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowSizeChart(true)}
-                  className="mt-4 flex items-center gap-2 text-brand-700 hover:text-brand-800 transition-colors"
-                >
-                  <Ruler className="h-4 w-4" />
-                  <span className="text-sm font-medium">SIZE CHART</span>
-                </button>
+                  </>
+                ) : (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">This product is currently out of stock in all sizes.</p>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
