@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
 import ProductDetail from './components/ProductDetail';
 import VideoCategoryTile from './components/VideoCategoryTile';
-import AdminLoginModal from './components/AdminLoginModal';
 import AdminDashboard from './components/AdminDashboard';
-import UserAuthModal from './components/UserAuthModal';
+import LandingPage from './components/LandingPage';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<string>('home');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -21,10 +21,15 @@ const App: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-  const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
-  const [logoClickCount, setLogoClickCount] = useState(0);
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
+
+  // Check if user is already authenticated on mount
+  useEffect(() => {
+    const currentUser = localStorage.getItem('kurtiTimesCurrentUser');
+    if (currentUser) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   // Randomly select 3 best sellers for the Best Sellers page
   const bestSellers = useMemo(() => {
@@ -136,27 +141,18 @@ const App: React.FC = () => {
     setSelectedProduct(product);
   };
 
-  const handleLogoClick = () => {
-    setLogoClickCount(prev => {
-      const newCount = prev + 1;
-      if (newCount >= 3) {
-        setIsAdminLoginOpen(true);
-        return 0; // Reset counter
-      }
-      return newCount;
-    });
-    // Reset counter after 3 seconds
-    setTimeout(() => setLogoClickCount(0), 3000);
-  };
-
   const handleAdminLogin = (userId: string, password: string): boolean => {
     if (userId === '7624029175' && password === '7624029175') {
       setIsAdminLoggedIn(true);
       setIsAdminDashboardOpen(true);
-      setIsAdminLoginOpen(false);
+      setIsAuthenticated(true); // Admin can access the app
       return true;
     }
     return false;
+  };
+
+  const handleUserAuthenticated = () => {
+    setIsAuthenticated(true);
   };
 
   const handleUpdateProducts = (updatedProducts: Product[]) => {
@@ -386,6 +382,16 @@ const App: React.FC = () => {
     }
   };
 
+  // Show landing page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <LandingPage
+        onAuthenticated={handleUserAuthenticated}
+        onAdminLogin={handleAdminLogin}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
       <Navbar 
@@ -395,8 +401,6 @@ const App: React.FC = () => {
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         onNavigate={handleNavigation}
         activePage={currentView}
-        onLogoClick={handleLogoClick}
-        onAuthClick={() => setIsUserAuthOpen(true)}
       />
 
       {selectedProduct && (
@@ -411,12 +415,6 @@ const App: React.FC = () => {
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} />
       <InfoModal isOpen={!!activeInfoPage} onClose={() => setActiveInfoPage(null)} title={getModalTitle()}>{renderInfoContent()}</InfoModal>
 
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onLogin={handleAdminLogin}
-      />
-
       <AdminDashboard
         isOpen={isAdminDashboardOpen}
         onClose={() => {
@@ -425,11 +423,6 @@ const App: React.FC = () => {
         }}
         products={products}
         onUpdateProducts={handleUpdateProducts}
-      />
-
-      <UserAuthModal
-        isOpen={isUserAuthOpen}
-        onClose={() => setIsUserAuthOpen(false)}
       />
 
       {!selectedProduct && <div className="flex-grow">{renderContent()}</div>}

@@ -8,8 +8,8 @@ interface NavbarProps {
   toggleMobileMenu: () => void;
   onNavigate: (page: string) => void;
   activePage: string;
-  onLogoClick: () => void;
-  onAuthClick: () => void;
+  onLogoClick?: () => void;
+  onAuthClick?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -41,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({
             </button>
             <div className="flex-shrink-0 flex flex-col items-center gap-1">
               <div 
-                className="flex items-center gap-2 cursor-pointer"
+                className={`flex items-center gap-2 ${onLogoClick ? 'cursor-pointer' : ''}`}
                 onClick={onLogoClick}
               >
                 {/* Logo Image */}
@@ -51,13 +51,15 @@ const Navbar: React.FC<NavbarProps> = ({
                   className="h-12 w-auto md:h-16"
                 />
               </div>
-              {/* Sign In / Sign Up Button */}
-              <button
-                onClick={onAuthClick}
-                className="text-xs text-brand-700 hover:text-brand-800 font-medium transition-colors"
-              >
-                Sign In / Sign Up
-              </button>
+              {/* Sign In / Sign Up Button - Only show if onAuthClick is provided */}
+              {onAuthClick && (
+                <button
+                  onClick={onAuthClick}
+                  className="text-xs text-brand-700 hover:text-brand-800 font-medium transition-colors"
+                >
+                  Sign In / Sign Up
+                </button>
+              )}
             </div>
             
             <div className="hidden md:flex ml-10 space-x-8">

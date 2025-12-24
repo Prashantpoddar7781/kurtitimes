@@ -1,25 +1,76 @@
 import React, { useState } from 'react';
-import { X, User, Lock } from 'lucide-react';
+import { X, Phone } from 'lucide-react';
 
 interface UserAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAuthenticated: () => void;
 }
 
-const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose }) => {
+const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onAuthenticated }) => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
+  const validateMobileNumber = (mobile: string): boolean => {
+    // Indian mobile number validation (10 digits, optionally starting with +91)
+    const cleaned = mobile.replace(/\D/g, '');
+    return cleaned.length === 10 || (cleaned.length === 12 && cleaned.startsWith('91'));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For now, just show a message
-    alert(isSignUp ? 'Sign up functionality coming soon!' : 'Sign in functionality coming soon!');
-    onClose();
+    setError('');
+
+    if (!mobileNumber.trim()) {
+      setError('Mobile number is required');
+      return;
+    }
+
+    if (!validateMobileNumber(mobileNumber)) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    // Store user in localStorage (simple implementation)
+    const cleanedMobile = mobileNumber.replace(/\D/g, '');
+    const userData = {
+      mobileNumber: cleanedMobile,
+      signedUpAt: new Date().toISOString(),
+    };
+
+    if (isSignUp) {
+      // Check if user already exists
+      const existingUsers = JSON.parse(localStorage.getItem('kurtiTimesUsers') || '[]');
+      const userExists = existingUsers.some((u: any) => u.mobileNumber === cleanedMobile);
+      
+      if (userExists) {
+        setError('This mobile number is already registered. Please sign in instead.');
+        return;
+      }
+
+      // Add new user
+      existingUsers.push(userData);
+      localStorage.setItem('kurtiTimesUsers', JSON.stringify(existingUsers));
+      localStorage.setItem('kurtiTimesCurrentUser', JSON.stringify(userData));
+    } else {
+      // Sign in - check if user exists
+      const existingUsers = JSON.parse(localStorage.getItem('kurtiTimesUsers') || '[]');
+      const userExists = existingUsers.some((u: any) => u.mobileNumber === cleanedMobile);
+      
+      if (!userExists) {
+        setError('Mobile number not found. Please sign up first.');
+        return;
+      }
+
+      // Set current user
+      localStorage.setItem('kurtiTimesCurrentUser', JSON.stringify(userData));
+    }
+
+    // Success - authenticate user
+    onAuthenticated();
   };
 
   return (
@@ -57,64 +108,33 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                  placeholder="Enter your name"
-                />
-              </div>
-            )}
-
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email or Phone
+              <label htmlFor="mobileNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile Number *
               </label>
-              <input
-                type="text"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                placeholder="Enter email or phone"
-              />
-            </div>
-
-            {isSignUp && (
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   type="tel"
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                  placeholder="Enter phone number"
+                  id="mobileNumber"
+                  value={mobileNumber}
+                  onChange={(e) => {
+                    setMobileNumber(e.target.value);
+                    setError('');
+                  }}
+                  className={`w-full border ${error ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 pl-10 pr-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500`}
+                  placeholder="Enter 10-digit mobile number"
+                  maxLength={10}
                 />
               </div>
-            )}
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                placeholder="Enter password"
-              />
+              {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+              <p className="mt-1 text-xs text-gray-500">
+                {isSignUp 
+                  ? 'Enter your mobile number to create an account'
+                  : 'Enter your registered mobile number to sign in'}
+              </p>
             </div>
 
             <div className="flex gap-3 pt-4">
