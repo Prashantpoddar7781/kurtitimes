@@ -4,6 +4,70 @@ import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
 
+// Stock Display Component
+const StockDisplay: React.FC<{ product: Product }> = ({ product }) => {
+  const stockBySize = product.stockBySize || {};
+  const totalStock = Object.values(stockBySize).reduce((sum, stock) => sum + stock, 0) || product.stock || 0;
+  
+  if (Object.keys(stockBySize).length > 0) {
+    return (
+      <div className="text-right">
+        <div className={`text-sm font-medium ${totalStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          Total: {totalStock}
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {Object.entries(stockBySize).map(([size, stock]) => (
+            <span key={size} className="mr-2">{size}: {stock}</span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <span className={`text-sm font-medium ${totalStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+      {totalStock}
+    </span>
+  );
+};
+
+// Stock By Size Editor Component
+const StockBySizeEditor: React.FC<{ 
+  product: Product; 
+  onUpdate: (stockBySize: { [size: string]: number }) => void;
+}> = ({ product, onUpdate }) => {
+  const availableSizes = product.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+  const stockBySize = product.stockBySize || {};
+  
+  const handleSizeStockChange = (size: string, value: number) => {
+    const updated = { ...stockBySize, [size]: Math.max(0, value) };
+    onUpdate(updated);
+  };
+  
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
+        {availableSizes.map(size => (
+          <div key={size} className="flex flex-col">
+            <label className="text-xs text-gray-500 mb-1">{size}</label>
+            <input
+              type="number"
+              min="0"
+              value={stockBySize[size] || 0}
+              onChange={(e) => handleSizeStockChange(size, parseInt(e.target.value) || 0)}
+              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              placeholder="0"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="text-xs text-gray-500">
+        Total: {Object.values(stockBySize).reduce((sum, stock) => sum + stock, 0)}
+      </div>
+    </div>
+  );
+};
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -97,8 +161,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
               nextId={Math.max(...editedProducts.map(p => p.id), 0) + 1}
             />
 
-            {/* Products Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            {/* Products Table - Desktop View */}
+            <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -146,16 +210,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingProduct?.id === product.id ? (
-                          <input
-                            type="number"
-                            value={editingProduct.stock || 0}
-                            onChange={(e) => handleUpdateField('stock', parseInt(e.target.value) || 0)}
-                            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                          <StockBySizeEditor
+                            product={editingProduct}
+                            onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
                           />
                         ) : (
-                          <span className={`text-sm font-medium ${(product.stock || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {product.stock || 0}
-                          </span>
+                          <StockDisplay product={product} />
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -178,13 +238,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={handleSave}
-                              className="text-green-600 hover:text-green-900"
+                              className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
+                              title="Save"
                             >
                               <Save className="h-5 w-5" />
                             </button>
                             <button
                               onClick={handleCancel}
-                              className="text-gray-600 hover:text-gray-900"
+                              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
+                              title="Cancel"
                             >
                               <XCircle className="h-5 w-5" />
                             </button>
@@ -193,13 +255,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => handleEdit(product)}
-                              className="text-brand-600 hover:text-brand-900"
+                              className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
+                              title="Edit"
                             >
                               <Edit2 className="h-5 w-5" />
                             </button>
                             <button
                               onClick={() => handleDelete(product.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                              title="Delete"
                             >
                               <Trash2 className="h-5 w-5" />
                             </button>
@@ -210,6 +274,114 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Products Cards - Mobile View */}
+            <div className="md:hidden space-y-4">
+              {editedProducts.map((product) => (
+                <div key={product.id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <img className="h-16 w-16 rounded object-cover flex-shrink-0" src={product.image} alt={product.name} />
+                    <div className="flex-1 min-w-0">
+                      {editingProduct?.id === product.id ? (
+                        <input
+                          type="text"
+                          value={editingProduct.name}
+                          onChange={(e) => handleUpdateField('name', e.target.value)}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium mb-1"
+                        />
+                      ) : (
+                        <>
+                          <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
+                          <div className="text-xs text-gray-500">ID: {product.id}</div>
+                        </>
+                      )}
+                    </div>
+                    {editingProduct?.id === product.id ? (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={handleSave}
+                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
+                          title="Save"
+                        >
+                          <Save className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
+                          title="Cancel"
+                        >
+                          <XCircle className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
+                          title="Edit"
+                        >
+                          <Edit2 className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Price:</span>
+                      {editingProduct?.id === product.id ? (
+                        <input
+                          type="number"
+                          value={editingProduct.price}
+                          onChange={(e) => handleUpdateField('price', parseFloat(e.target.value) || 0)}
+                          className="w-24 border border-gray-300 rounded px-2 py-1 text-sm text-right"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs text-gray-500">Stock:</span>
+                      {editingProduct?.id === product.id ? (
+                        <div className="flex-1 ml-4">
+                          <StockBySizeEditor
+                            product={editingProduct}
+                            onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
+                          />
+                        </div>
+                      ) : (
+                        <StockDisplay product={product} />
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Category:</span>
+                      {editingProduct?.id === product.id ? (
+                        <select
+                          value={editingProduct.category}
+                          onChange={(e) => handleUpdateField('category', e.target.value as Category)}
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        >
+                          {Object.values(Category).filter(cat => cat !== Category.ALL).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm text-gray-500">{product.category}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

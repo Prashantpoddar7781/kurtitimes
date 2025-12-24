@@ -10,7 +10,8 @@ export interface Product {
   id: number;
   name: string;
   price: number;
-  stock?: number; // Stock quantity
+  stock?: number; // Total stock quantity (deprecated - use stockBySize instead)
+  stockBySize?: { [size: string]: number }; // Stock quantity by size (e.g., { "S": 5, "M": 10, "L": 8 })
   category: Category;
   image: string;
   images?: string[]; // Multiple images for product detail
