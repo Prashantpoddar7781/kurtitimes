@@ -6,6 +6,7 @@ export const PRODUCTS: Product[] = [
     id: 1,
     name: "Design 1 - Elegant Kurti Set",
     price: 2499,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D1/IMG-20251221-WA0005.jpg",
     images: [
@@ -24,6 +25,7 @@ export const PRODUCTS: Product[] = [
     id: 2,
     name: "Design 2 - Classic Kurti Set",
     price: 2299,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D2/IMG-20251221-WA0003.jpg",
     images: [
@@ -43,6 +45,7 @@ export const PRODUCTS: Product[] = [
     id: 3,
     name: "Design 3 - Premium Kurti Set",
     price: 2799,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D3/IMG-20251221-WA0001.jpg",
     images: [
@@ -62,6 +65,7 @@ export const PRODUCTS: Product[] = [
     id: 4,
     name: "Design 4 - Stylish Kurti Set",
     price: 2399,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D4/IMG-20251221-WA0022.jpg",
     images: [
@@ -81,6 +85,7 @@ export const PRODUCTS: Product[] = [
     id: 5,
     name: "Design 5 - Trendy Kurti Set",
     price: 2599,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D5/IMG-20251221-WA0014.jpg",
     images: [
@@ -100,6 +105,7 @@ export const PRODUCTS: Product[] = [
     id: 6,
     name: "Design 6 - Elegant Print Kurti Set",
     price: 2499,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D6/IMG-20251221-WA0021.jpg",
     images: [
@@ -119,6 +125,7 @@ export const PRODUCTS: Product[] = [
     id: 7,
     name: "Design 7 - Chic Kurti Set",
     price: 2699,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D7/IMG-20251221-WA0023.jpg",
     images: [
@@ -138,6 +145,7 @@ export const PRODUCTS: Product[] = [
     id: 8,
     name: "Design 8 - Modern Kurti Set",
     price: 2399,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D8/IMG-20251221-WA0007.jpg",
     images: [
@@ -157,6 +165,7 @@ export const PRODUCTS: Product[] = [
     id: 9,
     name: "Design 9 - Beautiful Kurti Set",
     price: 2599,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D9/IMG-20251221-WA0065.jpg",
     images: [
@@ -176,6 +185,7 @@ export const PRODUCTS: Product[] = [
     id: 10,
     name: "Design 10 - Fashionable Kurti Set",
     price: 2499,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D10/IMG-20251221-WA0054.jpg",
     images: [
@@ -194,6 +204,7 @@ export const PRODUCTS: Product[] = [
     id: 11,
     name: "Design 11 - Exquisite Kurti Set",
     price: 2799,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D11/IMG-20251221-WA0062.jpg",
     images: [
@@ -213,6 +224,7 @@ export const PRODUCTS: Product[] = [
     id: 12,
     name: "Design 12 - Sophisticated Kurti Set",
     price: 2699,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D12/IMG-20251221-WA0064.jpg",
     images: [
@@ -231,6 +243,7 @@ export const PRODUCTS: Product[] = [
     id: 13,
     name: "Design 13 - Deluxe Kurti Set",
     price: 2899,
+    stock: 10,
     category: Category.KURTI_SET,
     image: "/designs/D13/IMG-20251221-WA0057.jpg",
     images: [
@@ -248,27 +261,30 @@ export const PRODUCTS: Product[] = [
   
   // Indo Western
   {
-    id: 4,
+    id: 14,
     name: "Asymmetric Hem Fusion Dress",
     price: 2199,
+    stock: 10,
     category: Category.INDO_WESTERN,
     image: "https://picsum.photos/400/600?random=4",
     description: "Modern cut with traditional motifs.",
     rating: 4.3
   },
   {
-    id: 5,
+    id: 15,
     name: "Dhoti Style Saree Kurta",
     price: 2799,
+    stock: 10,
     category: Category.INDO_WESTERN,
     image: "https://picsum.photos/400/600?random=5",
     description: "Chic dhoti pants paired with a crop kurta and drape.",
     rating: 4.6
   },
   {
-    id: 6,
+    id: 16,
     name: "Cape Style Maxi",
     price: 2999,
+    stock: 10,
     category: Category.INDO_WESTERN,
     image: "https://picsum.photos/400/600?random=6",
     description: "Floor length maxi with an attached sheer cape.",
@@ -277,27 +293,30 @@ export const PRODUCTS: Product[] = [
 
   // Co-ord Sets
   {
-    id: 7,
+    id: 17,
     name: "Ikat Print Co-ord",
     price: 1599,
+    stock: 10,
     category: Category.COORD_SETS,
     image: "https://picsum.photos/400/600?random=7",
     description: "Trendy ikat print shirt and pant set.",
     rating: 4.1
   },
   {
-    id: 8,
+    id: 18,
     name: "Silk Lounge Set",
     price: 3499,
+    stock: 10,
     category: Category.COORD_SETS,
     image: "https://picsum.photos/400/600?random=8",
     description: "Luxurious silk co-ord set in pastel peach.",
     rating: 4.9
   },
   {
-    id: 9,
+    id: 19,
     name: "Boho Chic Trouser Set",
     price: 1999,
+    stock: 10,
     category: Category.COORD_SETS,
     image: "https://picsum.photos/400/600?random=9",
     description: "Relaxed fit trousers with a matching kaftan top.",
@@ -306,27 +325,30 @@ export const PRODUCTS: Product[] = [
 
   // Tunics
   {
-    id: 10,
+    id: 20,
     name: "Embroidered Georgette Tunic",
     price: 1299,
+    stock: 10,
     category: Category.TUNICS,
     image: "https://picsum.photos/400/600?random=10",
     description: "Short georgette tunic with neck embroidery.",
     rating: 4.0
   },
   {
-    id: 11,
+    id: 21,
     name: "Denim Fusion Tunic",
     price: 1499,
+    stock: 10,
     category: Category.TUNICS,
     image: "https://picsum.photos/400/600?random=11",
     description: "Casual denim tunic with indian prints.",
     rating: 4.3
   },
   {
-    id: 12,
+    id: 22,
     name: "Angrakha Style Short Kurti",
     price: 1199,
+    stock: 10,
     category: Category.TUNICS,
     image: "https://picsum.photos/400/600?random=12",
     description: "Traditional angrakha pattern in a short tunic length.",

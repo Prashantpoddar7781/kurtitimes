@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShoppingBag, Menu, X, Search, Heart } from 'lucide-react';
 
 interface NavbarProps {
@@ -8,6 +8,8 @@ interface NavbarProps {
   toggleMobileMenu: () => void;
   onNavigate: (page: string) => void;
   activePage: string;
+  onLogoClick: () => void;
+  onAuthClick: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -16,7 +18,9 @@ const Navbar: React.FC<NavbarProps> = ({
   isMobileMenuOpen, 
   toggleMobileMenu,
   onNavigate,
-  activePage
+  activePage,
+  onLogoClick,
+  onAuthClick
 }) => {
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -35,16 +39,25 @@ const Navbar: React.FC<NavbarProps> = ({
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
-            <div 
-              className="flex-shrink-0 flex items-center gap-2 cursor-pointer"
-              onClick={() => onNavigate('home')}
-            >
-              {/* Logo Image */}
-              <img 
-                src="/logo.jpg" 
-                alt="Kurti Times Logo" 
-                className="h-12 w-auto md:h-16"
-              />
+            <div className="flex-shrink-0 flex flex-col items-center gap-1">
+              <div 
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={onLogoClick}
+              >
+                {/* Logo Image */}
+                <img 
+                  src="/logo.jpg" 
+                  alt="Kurti Times Logo" 
+                  className="h-12 w-auto md:h-16"
+                />
+              </div>
+              {/* Sign In / Sign Up Button */}
+              <button
+                onClick={onAuthClick}
+                className="text-xs text-brand-700 hover:text-brand-800 font-medium transition-colors"
+              >
+                Sign In / Sign Up
+              </button>
             </div>
             
             <div className="hidden md:flex ml-10 space-x-8">

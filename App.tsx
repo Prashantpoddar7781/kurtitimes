@@ -5,6 +5,9 @@ import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
 import ProductDetail from './components/ProductDetail';
 import VideoCategoryTile from './components/VideoCategoryTile';
+import AdminLoginModal from './components/AdminLoginModal';
+import AdminDashboard from './components/AdminDashboard';
+import UserAuthModal from './components/UserAuthModal';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
@@ -16,11 +19,17 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeInfoPage, setActiveInfoPage] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+  const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
 
   // Randomly select 3 best sellers for the Best Sellers page
   const bestSellers = useMemo(() => {
-    return [...PRODUCTS].sort(() => 0.5 - Math.random()).slice(0, 3);
-  }, []);
+    return [...products].sort(() => 0.5 - Math.random()).slice(0, 3);
+  }, [products]);
 
   // Category Configuration for Landing Page with random photos from D1-D4
   const designImages = useMemo(() => {
@@ -127,6 +136,33 @@ const App: React.FC = () => {
     setSelectedProduct(product);
   };
 
+  const handleLogoClick = () => {
+    setLogoClickCount(prev => {
+      const newCount = prev + 1;
+      if (newCount >= 3) {
+        setIsAdminLoginOpen(true);
+        return 0; // Reset counter
+      }
+      return newCount;
+    });
+    // Reset counter after 3 seconds
+    setTimeout(() => setLogoClickCount(0), 3000);
+  };
+
+  const handleAdminLogin = (userId: string, password: string): boolean => {
+    if (userId === '7624029175' && password === '7624029175') {
+      setIsAdminLoggedIn(true);
+      setIsAdminDashboardOpen(true);
+      setIsAdminLoginOpen(false);
+      return true;
+    }
+    return false;
+  };
+
+  const handleUpdateProducts = (updatedProducts: Product[]) => {
+    setProducts(updatedProducts);
+  };
+
   const updateQuantity = (id: number, delta: number) => {
     setCartItems(prev => prev.map(item => {
       if (item.id === id) {
@@ -191,7 +227,7 @@ const App: React.FC = () => {
     const selectedCategory = Object.values(Category).find(cat => cat === currentView);
 
     if (selectedCategory && selectedCategory !== Category.ALL) {
-      const filteredProducts = PRODUCTS.filter(p => p.category === selectedCategory);
+      const filteredProducts = products.filter(p => p.category === selectedCategory);
       return (
         <div className="max-w-7xl mx-auto py-8 min-h-[70vh] animate-in fade-in duration-500">
           <div className="px-4 mb-8">

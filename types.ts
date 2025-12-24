@@ -10,6 +10,7 @@ export interface Product {
   id: number;
   name: string;
   price: number;
+  stock?: number; // Stock quantity
   category: Category;
   image: string;
   images?: string[]; // Multiple images for product detail
