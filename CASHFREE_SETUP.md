@@ -16,6 +16,14 @@ This app uses **Cashfree** payment gateway with automatic split payment function
 
 ## Setup Instructions
 
+### ⚠️ Important: Two Separate Accounts Required
+
+You need **TWO separate Cashfree accounts** with **different email addresses**:
+1. **Business Account** - Business email + Business PAN (receives 99%)
+2. **Developer Account** - Your email + Your PAN (receives 1%)
+
+**Accounts are linked through code configuration, NOT in Cashfree dashboard!**
+
 ### Step 1: Create Two Cashfree Accounts
 
 **Important:** You need TWO separate Cashfree accounts for split payments:
