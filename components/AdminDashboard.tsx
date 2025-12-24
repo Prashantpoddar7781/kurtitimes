@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Edit2, Trash2, Plus, Save, XCircle } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
+import AddProductModal from './AddProductModal';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface AdminDashboardProps {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, products, onUpdateProducts }) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editedProducts, setEditedProducts] = useState<Product[]>(products);
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -44,18 +46,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   };
 
   const handleAddNew = () => {
-    const newProduct: Product = {
-      id: Math.max(...editedProducts.map(p => p.id), 0) + 1,
-      name: 'New Product',
-      price: 0,
-      stock: 0,
-      category: Category.KURTI_SET,
-      image: '/logo.jpg',
-      description: 'Product description',
-      rating: 0,
-      availableSizes: ['S', 'M', 'L', 'XL'],
-    };
-    setEditingProduct(newProduct);
+    setIsAddProductOpen(true);
+  };
+
+  const handleSaveNewProduct = (newProduct: Product) => {
+    const updated = [...editedProducts, newProduct];
+    setEditedProducts(updated);
+    onUpdateProducts(updated);
   };
 
   const handleUpdateField = (field: keyof Product, value: any) => {
@@ -92,6 +89,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                 Add New Product
               </button>
             </div>
+
+            <AddProductModal
+              isOpen={isAddProductOpen}
+              onClose={() => setIsAddProductOpen(false)}
+              onSave={handleSaveNewProduct}
+              nextId={Math.max(...editedProducts.map(p => p.id), 0) + 1}
+            />
 
             {/* Products Table */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
