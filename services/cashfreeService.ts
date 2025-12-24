@@ -27,7 +27,14 @@ export const loadCashfreeScript = (): Promise<boolean> => {
 
     const script = document.createElement('script');
     script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-    script.onload = () => resolve(true);
+    script.onload = () => {
+      // Initialize Cashfree
+      if (window.cashfree) {
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    };
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
@@ -77,31 +84,26 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
 
     // Load Cashfree script
     const loaded = await loadCashfreeScript();
-    if (!loaded) {
+    if (!loaded || !window.cashfree) {
       throw new Error('Failed to load Cashfree SDK');
     }
 
     // Initialize Cashfree Checkout
     const cashfree = window.cashfree;
-    
-    // Get API key from backend response or use default
-    const apiKey = orderData.api_key || '';
 
+    // Open Cashfree checkout
     cashfree.checkout({
       paymentSessionId: orderData.payment_session_id,
-      redirectTarget: '_modal', // Opens in modal
+      redirectTarget: '_modal', // Opens in modal popup
     }).then((result: any) => {
-      if (result.error) {
-        options.onFailure({
-          code: 'PAYMENT_ERROR',
-          message: result.error.message || 'Payment failed'
-        });
-      } else {
-        // Payment successful - verify on backend
-        verifyPayment(orderData.order_id, result.payment_id || result.orderId)
+      // Check if payment was successful
+      if (result && result.payment) {
+        // Payment completed - verify on backend
+        const paymentId = result.payment.paymentId || result.payment.payment_id;
+        verifyPayment(orderData.order_id, paymentId)
           .then((verified) => {
             if (verified) {
-              options.onSuccess(result.payment_id || result.orderId, orderData.order_id);
+              options.onSuccess(paymentId, orderData.order_id);
             } else {
               options.onFailure({
                 code: 'VERIFICATION_FAILED',
@@ -115,11 +117,24 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
               message: error.message || 'Failed to verify payment'
             });
           });
+      } else if (result && result.error) {
+        // Payment error
+        options.onFailure({
+          code: 'PAYMENT_ERROR',
+          message: result.error.message || 'Payment failed'
+        });
+      } else {
+        // Payment cancelled or closed
+        options.onFailure({
+          code: 'PAYMENT_CANCELLED',
+          message: 'Payment cancelled by user'
+        });
       }
     }).catch((error: any) => {
+      // Handle checkout initialization errors
       options.onFailure({
-        code: 'PAYMENT_CANCELLED',
-        message: error.message || 'Payment cancelled by user'
+        code: 'CHECKOUT_ERROR',
+        message: error.message || 'Failed to open payment checkout'
       });
     });
 
