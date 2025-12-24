@@ -409,6 +409,27 @@ const App: React.FC = () => {
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} />
       <InfoModal isOpen={!!activeInfoPage} onClose={() => setActiveInfoPage(null)} title={getModalTitle()}>{renderInfoContent()}</InfoModal>
 
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onLogin={handleAdminLogin}
+      />
+
+      <AdminDashboard
+        isOpen={isAdminDashboardOpen}
+        onClose={() => {
+          setIsAdminDashboardOpen(false);
+          setIsAdminLoggedIn(false);
+        }}
+        products={products}
+        onUpdateProducts={handleUpdateProducts}
+      />
+
+      <UserAuthModal
+        isOpen={isUserAuthOpen}
+        onClose={() => setIsUserAuthOpen(false)}
+      />
+
       {!selectedProduct && <div className="flex-grow">{renderContent()}</div>}
 
       {/* Mobile Sticky Navigation (only on product pages) */}
