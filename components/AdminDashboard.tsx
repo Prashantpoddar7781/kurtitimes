@@ -112,8 +112,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                         <div className="flex items-center">
                           <img className="h-10 w-10 rounded object-cover" src={product.image} alt={product.name} />
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500">ID: {product.id}</div>
+                            {editingProduct?.id === product.id ? (
+                              <input
+                                type="text"
+                                value={editingProduct.name}
+                                onChange={(e) => handleUpdateField('name', e.target.value)}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium"
+                              />
+                            ) : (
+                              <>
+                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                <div className="text-sm text-gray-500">ID: {product.id}</div>
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>
