@@ -155,6 +155,14 @@ const App: React.FC = () => {
     setIsAuthenticated(true);
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem('kurtiTimesCurrentUser');
+    setIsAuthenticated(false);
+    setIsAdminLoggedIn(false);
+    setIsAdminDashboardOpen(false);
+    setCurrentView('home');
+  };
+
   const handleUpdateProducts = (updatedProducts: Product[]) => {
     setProducts(updatedProducts);
   };
@@ -401,6 +409,7 @@ const App: React.FC = () => {
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         onNavigate={handleNavigation}
         activePage={currentView}
+        onSignOut={handleSignOut}
       />
 
       {selectedProduct && (

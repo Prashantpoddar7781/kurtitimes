@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Menu, X, Search, Heart } from 'lucide-react';
+import { ShoppingBag, Menu, X, Search, Heart, LogOut, ArrowLeft } from 'lucide-react';
 
 interface NavbarProps {
   cartCount: number;
@@ -10,6 +10,7 @@ interface NavbarProps {
   activePage: string;
   onLogoClick?: () => void;
   onAuthClick?: () => void;
+  onSignOut?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -20,7 +21,8 @@ const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   activePage,
   onLogoClick,
-  onAuthClick
+  onAuthClick,
+  onSignOut
 }) => {
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -78,6 +80,16 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
           
           <div className="flex items-center gap-2 md:gap-4">
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:text-brand-700 hover:bg-brand-50 rounded-md transition-colors"
+                title="Back to Landing Page"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden md:inline">Back</span>
+              </button>
+            )}
             <button className="p-1.5 text-gray-700 md:hidden"><Search className="h-5 w-5" /></button>
             <button className="hidden md:block p-1.5 text-gray-700"><Heart className="h-5 w-5" /></button>
             <button 
@@ -112,6 +124,18 @@ const Navbar: React.FC<NavbarProps> = ({
                 {item.label}
               </button>
             ))}
+            {onSignOut && (
+              <button
+                onClick={() => {
+                  onSignOut();
+                  toggleMobileMenu();
+                }}
+                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 border-t border-gray-200 mt-2 pt-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Landing Page
+              </button>
+            )}
           </div>
         </div>
       )}
