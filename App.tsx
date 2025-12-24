@@ -395,6 +395,8 @@ const App: React.FC = () => {
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         onNavigate={handleNavigation}
         activePage={currentView}
+        onLogoClick={handleLogoClick}
+        onAuthClick={() => setIsUserAuthOpen(true)}
       />
 
       {selectedProduct && (
