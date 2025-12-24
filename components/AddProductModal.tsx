@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Upload, Trash2, Plus } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Upload, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
 import { Product, Category } from '../types';
 
 interface AddProductModalProps {
@@ -7,6 +7,12 @@ interface AddProductModalProps {
   onClose: () => void;
   onSave: (product: Product) => void;
   nextId: number;
+}
+
+interface ImageFile {
+  file: File;
+  preview: string;
+  dataUrl: string;
 }
 
 const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId }) => {
@@ -19,31 +25,53 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const [pantLength, setPantLength] = useState('39 inches');
   const [fabric, setFabric] = useState('Rayon');
   const [washCare, setWashCare] = useState('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
-  const [images, setImages] = useState<string[]>(['']);
+  const [imageFiles, setImageFiles] = useState<ImageFile[]>([]);
   const [availableSizes, setAvailableSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 
   if (!isOpen) return null;
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...images];
-    newImages[index] = value;
-    setImages(newImages);
-  };
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
 
-  const addImageField = () => {
-    if (images.length < 5) {
-      setImages([...images, '']);
+    const newFiles: ImageFile[] = [];
+    const remainingSlots = 5 - imageFiles.length;
+
+    for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+
+        newFiles.push({
+          file,
+          preview: URL.createObjectURL(file),
+          dataUrl: dataUrl as string,
+        });
+      }
+    }
+
+    setImageFiles([...imageFiles, ...newFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  const removeImageField = (index: number) => {
-    if (images.length > 1) {
-      const newImages = images.filter((_, i) => i !== index);
-      setImages(newImages);
-    }
+  const removeImage = (index: number) => {
+    const imageToRemove = imageFiles[index];
+    URL.revokeObjectURL(imageToRemove.preview);
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
   };
 
   const toggleSize = (size: string) => {
@@ -65,11 +93,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       newErrors.price = 'Valid price is required';
     }
 
-    const validImages = images.filter(img => img.trim() !== '');
-    if (validImages.length < 1) {
+    if (imageFiles.length < 1) {
       newErrors.images = 'At least 1 image is required';
     }
-    if (validImages.length > 5) {
+    if (imageFiles.length > 5) {
       newErrors.images = 'Maximum 5 images allowed';
     }
 
@@ -92,7 +119,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       return;
     }
 
-    const validImages = images.filter(img => img.trim() !== '');
+    // Convert image files to data URLs for storage
+    const imageUrls = imageFiles.map(img => img.dataUrl);
 
     const newProduct: Product = {
       id: nextId,
@@ -100,8 +128,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       price: parseFloat(price),
       stock: parseInt(stock) || 0,
       category: category,
-      image: validImages[0],
-      images: validImages,
+      image: imageUrls[0],
+      images: imageUrls,
       description: description.trim(),
       rating: 0,
       topLength: topLength.trim() || undefined,
@@ -116,6 +144,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   };
 
   const handleReset = () => {
+    // Clean up object URLs
+    imageFiles.forEach(img => URL.revokeObjectURL(img.preview));
+    
     setName('');
     setPrice('');
     setStock('10');
@@ -125,9 +156,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     setPantLength('39 inches');
     setFabric('Rayon');
     setWashCare('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
-    setImages(['']);
+    setImageFiles([]);
     setAvailableSizes(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
     setErrors({});
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -210,46 +244,66 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                 </select>
               </div>
 
-              {/* Images */}
+              {/* Images Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Product Images * (Min: 1, Max: 5)
                 </label>
-                <div className="space-y-2">
-                  {images.map((image, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={image}
-                        onChange={(e) => handleImageChange(index, e.target.value)}
-                        className={`flex-1 border ${errors.images && index === 0 ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500`}
-                        placeholder="/designs/D14/image1.jpg"
-                      />
-                      {images.length > 1 && (
+                
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                {/* Image Preview Grid */}
+                {imageFiles.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                    {imageFiles.map((imageFile, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                          <img
+                            src={imageFile.preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <button
                           type="button"
-                          onClick={() => removeImageField(index)}
-                          className="p-2 text-red-600 hover:text-red-800"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
-                      )}
-                    </div>
-                  ))}
-                  {images.length < 5 && (
-                    <button
-                      type="button"
-                      onClick={addImageField}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-brand-700 hover:text-brand-800 border border-brand-300 rounded-md hover:bg-brand-50"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Another Image
-                    </button>
-                  )}
-                </div>
-                {errors.images && <p className="mt-1 text-sm text-red-600">{errors.images}</p>}
-                <p className="mt-1 text-xs text-gray-500">
-                  Enter image paths (e.g., /designs/D14/image1.jpg). First image will be the main product image.
+                        {index === 0 && (
+                          <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-brand-700 text-white text-xs rounded">
+                            Main
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                {imageFiles.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={handleImageClick}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-brand-500 hover:text-brand-700 transition-colors"
+                  >
+                    <Upload className="h-5 w-5" />
+                    {imageFiles.length === 0 ? 'Upload Images (1-5)' : `Add More Images (${imageFiles.length}/5)`}
+                  </button>
+                )}
+
+                {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
+                <p className="mt-2 text-xs text-gray-500">
+                  Upload 1-5 product images. First image will be used as the main product image.
                 </p>
               </div>
 
