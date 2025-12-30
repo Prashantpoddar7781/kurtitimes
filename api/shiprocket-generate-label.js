@@ -1,8 +1,11 @@
-// Vercel Serverless Function - Generate Shipping Label
+// Shiprocket Generate Label API
+// This function generates shipping label for a shipment
+
 module.exports = async (req, res) => {
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -13,50 +16,75 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const { shipmentId } = req.body;
 
-    if (!token) {
-      return res.status(401).json({ error: 'Authorization token required' });
+    if (!shipmentId) {
+      return res.status(400).json({ error: 'Shipment ID is required' });
     }
 
-    const { shipment_id } = req.body;
+    // Authenticate with Shiprocket
+    const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL;
+    const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
 
-    if (!shipment_id) {
-      return res.status(400).json({
-        error: 'shipment_id is required'
+    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: Missing Shiprocket credentials' 
       });
     }
 
-    // Generate label from Shiprocket
-    const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, {
+    const authResponse = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
-        shipment_id: [shipment_id]
+        email: SHIPROCKET_EMAIL,
+        password: SHIPROCKET_PASSWORD,
       }),
     });
 
-    const data = await response.json();
+    const authData = await authResponse.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({
+    if (!authResponse.ok) {
+      return res.status(authResponse.status).json({ 
+        error: 'Authentication failed',
+        details: authData 
+      });
+    }
+
+    const token = authData.token;
+
+    // Generate label
+    const labelResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        shipment_id: [shipmentId]
+      }),
+    });
+
+    const labelData = await labelResponse.json();
+
+    if (!labelResponse.ok) {
+      return res.status(labelResponse.status).json({ 
         error: 'Failed to generate label',
-        message: data.message || 'Unknown error'
+        details: labelData 
       });
     }
 
     return res.status(200).json({
-      label_url: data.label_url || '',
-      message: 'Label generated successfully'
+      success: true,
+      labelUrl: labelData.label_url || null,
+      labelData: labelData
     });
   } catch (error) {
     console.error('Shiprocket generate label error:', error);
-    return res.status(500).json({
-      error: 'Failed to generate label',
-      message: error.message
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
     });
   }
 };

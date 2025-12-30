@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, CreditCard, CheckCircle, Truck } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, Truck, CreditCard, Loader2 } from 'lucide-react';
 import { CartItem } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
-import { initiatePayment } from '../services/cashfreeService';
-import { calculateShipping, validatePincode, ShippingAddress } from '../services/shippingService';
-import { createShipment } from '../services/shiprocketService';
+import { initiatePayment, openCashfreeCheckout, verifyPayment } from '../services/cashfreeService';
+import { getShippingRates, createShipment, ShippingAddress } from '../services/shiprocketService';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -24,9 +23,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
   const [estimatedDays, setEstimatedDays] = useState(0);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -40,42 +41,54 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       setCity('');
       setState('');
       setPincode('');
-      setIsProcessing(false);
       setShippingCost(0);
       setEstimatedDays(0);
+      setOrderId(null);
     }
   }, [isOpen]);
 
   // Calculate shipping when pincode changes
   useEffect(() => {
-    if (pincode && validatePincode(pincode)) {
-      const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const shipping = calculateShipping(pincode, total);
-      setShippingCost(shipping.amount);
-      setEstimatedDays(shipping.estimatedDays);
-    } else {
-      setShippingCost(0);
-      setEstimatedDays(0);
-    }
-  }, [pincode, cartItems]);
+    const calculateShipping = async () => {
+      if (pincode && pincode.length === 6) {
+        setIsLoadingShipping(true);
+        try {
+          const weight = cartItems.length * 0.5; // 0.5kg per item
+          const rates = await getShippingRates(pincode, weight);
+          setShippingCost(rates.available ? rates.cost : 0);
+          setEstimatedDays(rates.estimatedDays);
+        } catch (error) {
+          console.error('Error calculating shipping:', error);
+          setShippingCost(0);
+          setEstimatedDays(0);
+        } finally {
+          setIsLoadingShipping(false);
+        }
+      } else {
+        setShippingCost(0);
+        setEstimatedDays(0);
+      }
+    };
+
+    const timeoutId = setTimeout(calculateShipping, 500);
+    return () => clearTimeout(timeoutId);
+  }, [pincode, cartItems.length]);
 
   if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + shippingCost;
-  const amountInPaise = Math.round(total * 100); // Convert to paise
+
+  const validatePincode = (pin: string) => {
+    return /^\d{6}$/.test(pin);
+  };
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (amountInPaise < 100) {
-      alert('Minimum order amount is ₹1.00');
-      return;
-    }
 
-    // Validate shipping address
-    if (!addressLine1 || !city || !state || !pincode) {
-      alert('Please fill in all shipping address fields');
+    // Validate form
+    if (!name || !phone || !addressLine1 || !city || !state || !pincode) {
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -84,117 +97,94 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       return;
     }
 
-    setIsProcessing(true);
-
-    const orderItems = cartItems.map(item => 
-      `${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} x${item.quantity}`
-    ).join(', ');
+    setIsProcessingPayment(true);
 
     try {
-      await initiatePayment({
-        amount: amountInPaise,
-        currency: 'INR',
-        name: name,
-        phone: phone,
-        email: email || undefined,
-        description: `Order from Kurti Times - ${orderItems}`,
-        onSuccess: async (paymentId, orderId) => {
-          setIsProcessing(false);
-          
-          // Create shipment in Shiprocket
-          try {
-            const shipmentData = {
-              order_id: `KT-${Date.now()}`,
-              order_date: new Date().toISOString(),
-              pickup_location: 'Default', // Update this with your pickup location name from Shiprocket
-              billing_customer_name: name.split(' ')[0] || name,
-              billing_last_name: name.split(' ').slice(1).join(' ') || '',
-              billing_address: addressLine1,
-              billing_address_2: addressLine2 || '',
-              billing_city: city,
-              billing_pincode: pincode,
-              billing_state: state,
-              billing_country: 'India',
-              billing_email: email || phone + '@temp.com',
-              billing_phone: phone,
-              shipping_is_billing: true,
-              shipping_customer_name: name.split(' ')[0] || name,
-              shipping_last_name: name.split(' ').slice(1).join(' ') || '',
-              shipping_address: addressLine1,
-              shipping_address_2: addressLine2 || '',
-              shipping_city: city,
-              shipping_pincode: pincode,
-              shipping_state: state,
-              shipping_country: 'India',
-              shipping_email: email || phone + '@temp.com',
-              shipping_phone: phone,
-              order_items: cartItems.map((item) => ({
-                name: item.name,
-                sku: `SKU-${item.id}-${item.selectedSize || 'M'}`,
-                units: item.quantity,
-                selling_price: item.price,
-              })),
-              payment_method: 'Prepaid',
-              sub_total: subtotal,
-              length: 20,
-              breadth: 15,
-              height: 5,
-              weight: Math.max(0.5, cartItems.length * 0.3),
-            };
+      // Generate unique order ID
+      const generatedOrderId = `KT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setOrderId(generatedOrderId);
 
-            const shipment = await createShipment(shipmentData);
-            
-            setStep('success');
-            
-            // Send order confirmation via WhatsApp with shipping address and tracking
-            const orderDetails = cartItems.map(item => 
-              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
-            ).join('\n');
-            
-            const shippingAddress = `${addressLine1}${addressLine2 ? `, ${addressLine2}` : ''}, ${city}, ${state} - ${pincode}`;
-            
-            let message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}`;
-            
-            if (shipment.shipment_id) {
-              message += `\n*Shipment ID:* ${shipment.shipment_id}\n*AWB Code:* ${shipment.awb_code || 'Pending'}\n*Courier:* ${shipment.courier_name || 'TBD'}`;
-            }
-            
-            message += `\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Shipping Address:*\n📍 ${shippingAddress}\n\n*Order Summary:*\n${orderDetails}\n\n*Subtotal: ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}*\n*Shipping: ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}*\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
-            
-            setTimeout(() => {
-              const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
-              window.open(whatsappUrl, '_blank');
-            }, 2000);
-          } catch (shipError: any) {
-            // If Shiprocket fails, still show success but log error
-            console.error('Shiprocket error:', shipError);
-            setStep('success');
-            
-            // Send order confirmation without shipment details
-            const orderDetails = cartItems.map(item => 
-              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
-            ).join('\n');
-            
-            const shippingAddress = `${addressLine1}${addressLine2 ? `, ${addressLine2}` : ''}, ${city}, ${state} - ${pincode}`;
-            
-            const message = `*Order Confirmed - Kurti Times* ✅\n\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId || 'N/A'}\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}${email ? `\n📧 Email: ${email}` : ''}\n\n*Shipping Address:*\n📍 ${shippingAddress}\n\n*Order Summary:*\n${orderDetails}\n\n*Subtotal: ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}*\n*Shipping: ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}*\n*Total Amount Paid: ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}*\n\nThank you for your order! We'll process it shortly.`;
-            
-            setTimeout(() => {
-              const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
-              window.open(whatsappUrl, '_blank');
-            }, 2000);
-          }
-        },
-        onFailure: (error) => {
-          setIsProcessing(false);
-          if (error.code !== 'USER_CLOSED') {
-            alert(`Payment failed: ${error.message || 'Please try again'}`);
-          }
-        },
+      // Create payment order
+      const paymentResponse = await initiatePayment({
+        orderId: generatedOrderId,
+        orderAmount: total,
+        customerName: name,
+        customerPhone: phone,
+        customerEmail: email || undefined,
       });
-    } catch (error: any) {
-      setIsProcessing(false);
-      alert(`Error initiating payment: ${error.message || 'Please try again'}`);
+
+      if (!paymentResponse.success || !paymentResponse.paymentSessionId) {
+        throw new Error(paymentResponse.error || 'Failed to create payment order');
+      }
+
+      // Open Cashfree checkout
+      await openCashfreeCheckout(
+        paymentResponse.paymentSessionId,
+        async (orderId) => {
+          // Payment successful
+          try {
+            // Verify payment
+            const verification = await verifyPayment(orderId);
+            
+            if (verification.success && verification.paymentStatus === 'SUCCESS') {
+              // Create shipment in Shiprocket
+              const shippingAddress: ShippingAddress = {
+                addressLine1,
+                addressLine2: addressLine2 || undefined,
+                city,
+                state,
+                pincode,
+              };
+
+              const orderItems = cartItems.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              }));
+
+              const shipmentResponse = await createShipment(
+                orderId,
+                name,
+                phone,
+                email || '',
+                shippingAddress,
+                orderItems,
+                'Prepaid',
+                total
+              );
+
+              // Send WhatsApp notification
+              const orderItemsText = cartItems.map(item => 
+                `• ${item.name} (Size: ${item.selectedSize || 'N/A'}) x${item.quantity} - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+              ).join('\n');
+
+              const message = `*✅ Order Confirmed - Kurti Times* 🛍️\n\n*Order ID:* ${orderId}\n\n*Customer Details:*\n👤 Name: ${name}\n📱 Phone: ${phone}\n${email ? `📧 Email: ${email}\n` : ''}\n*Shipping Address:*\n${addressLine1}${addressLine2 ? `\n${addressLine2}` : ''}\n${city}, ${state} - ${pincode}\n\n*Order Summary:*\n${orderItemsText}\n\n*Subtotal:* ${CURRENCY_SYMBOL}${subtotal.toLocaleString('en-IN')}\n*Shipping:* ${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}\n*Total:* ${CURRENCY_SYMBOL}${total.toLocaleString('en-IN')}\n\n*Payment Status:* ✅ Paid\n${shipmentResponse.success && shipmentResponse.shipmentId ? `*Shipment ID:* ${shipmentResponse.shipmentId}\n*AWB Code:* ${shipmentResponse.awbCode || 'Pending'}` : ''}\n\n*Estimated Delivery:* ${estimatedDays} days`;
+
+              const whatsappUrl = `https://wa.me/919892794421?text=${encodeURIComponent(message)}`;
+              window.open(whatsappUrl, '_blank');
+
+              setStep('success');
+            } else {
+              throw new Error('Payment verification failed');
+            }
+          } catch (error) {
+            console.error('Error processing order:', error);
+            alert('Payment successful but order processing failed. Please contact support with Order ID: ' + orderId);
+          } finally {
+            setIsProcessingPayment(false);
+          }
+        },
+        (error) => {
+          // Payment failed
+          setIsProcessingPayment(false);
+          alert('Payment failed: ' + error);
+        }
+      );
+    } catch (error) {
+      setIsProcessingPayment(false);
+      console.error('Payment error:', error);
+      alert('Payment failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -208,8 +198,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-6 bg-brand-50 border-b border-brand-100">
             <div className="flex items-center gap-2">
-              {(step === 'checkout' || step === 'success') && (
-                <button onClick={() => step === 'checkout' ? setStep('cart') : setStep('cart')} className="mr-2 text-brand-900 hover:text-brand-700">
+              {step === 'checkout' && (
+                <button onClick={() => setStep('cart')} className="mr-2 text-brand-900 hover:text-brand-700">
                   <ArrowLeft className="h-5 w-5" />
                 </button>
               )}
@@ -256,9 +246,6 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                               <p className="ml-4">{CURRENCY_SYMBOL}{item.price * item.quantity}</p>
                             </div>
                             <p className="mt-1 text-sm text-gray-500">{item.category}</p>
-                            {item.selectedSize && (
-                              <p className="mt-1 text-xs text-gray-600">Size: {item.selectedSize}</p>
-                            )}
                           </div>
                           <div className="flex-1 flex items-end justify-between text-sm">
                             <div className="flex items-center border rounded-md">
@@ -303,7 +290,9 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                        <div className="flex justify-between">
                          <span>Shipping</span>
                          <span>
-                           {pincode && validatePincode(pincode) ? (
+                           {isLoadingShipping ? (
+                             <Loader2 className="h-4 w-4 animate-spin inline" />
+                           ) : pincode && validatePincode(pincode) ? (
                              shippingCost === 0 ? (
                                <span className="text-green-600 font-medium">FREE</span>
                              ) : (
@@ -347,7 +336,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                      id="phone" 
                      required
                      value={phone}
-                     onChange={(e) => setPhone(e.target.value)}
+                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                      pattern="[0-9]{10}"
                      maxLength={10}
                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
@@ -447,34 +436,29 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                        {pincode && !validatePincode(pincode) && (
                          <p className="mt-1 text-xs text-red-600">Please enter a valid 6-digit pincode</p>
                        )}
-                       {pincode && validatePincode(pincode) && shippingCost === 0 && (
-                         <p className="mt-1 text-xs text-green-600">🎉 Free shipping on this order!</p>
-                       )}
                      </div>
                    </div>
-                 </div>
-
-                 <div className="bg-blue-50 p-3 rounded-md flex items-start gap-3">
-                   <CreditCard className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                   <p className="text-sm text-blue-800">
-                     Secure payment powered by Razorpay. All transactions are encrypted and secure.
-                   </p>
                  </div>
               </form>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="bg-green-50 p-4 rounded-full mb-4">
-                  <CheckCircle className="h-12 w-12 text-green-600" />
+                  <CreditCard className="h-12 w-12 text-green-600" />
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
-                <p className="text-gray-600 mb-4">Thank you for your order.</p>
-                <p className="text-sm text-gray-500">Order confirmation has been sent to WhatsApp.</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h3>
+                <p className="text-gray-600 mb-4">Your payment was successful.</p>
+                {orderId && (
+                  <p className="text-sm text-gray-500 mb-6">Order ID: {orderId}</p>
+                )}
+                <p className="text-sm text-gray-600 mb-6">
+                  Your order details have been sent to our WhatsApp. We'll process your order shortly.
+                </p>
                 <button
                   onClick={() => {
                     onClose();
-                    window.location.reload();
+                    setStep('cart');
                   }}
-                  className="mt-6 px-6 py-2 bg-brand-700 text-white rounded-lg hover:bg-brand-800 transition-colors"
+                  className="px-6 py-3 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors"
                 >
                   Continue Shopping
                 </button>
@@ -486,11 +470,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
             <div className="border-t border-gray-200 px-4 py-6 sm:px-6 bg-gray-50">
               {step === 'cart' ? (
                 <>
-                  <div className="flex justify-between text-base font-medium text-gray-900 mb-2">
+                  <div className="flex justify-between text-base font-medium text-gray-900 mb-4">
                     <p>Subtotal</p>
-                    <p className="font-bold text-xl">{CURRENCY_SYMBOL}{subtotal.toLocaleString('en-IN')}</p>
+                    <p className="font-bold text-xl">{CURRENCY_SYMBOL}{total.toLocaleString('en-IN')}</p>
                   </div>
-                  <p className="mt-0.5 text-sm text-gray-500 mb-6">Shipping calculated at checkout.</p>
+                  <p className="mt-0.5 text-sm text-gray-500 mb-6">Shipping and taxes calculated at checkout.</p>
                   <button
                     onClick={() => setStep('checkout')}
                     className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-brand-700 hover:bg-brand-800 transition-colors"
@@ -502,18 +486,18 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                 <button
                   type="submit"
                   form="checkout-form"
-                  disabled={isProcessing}
-                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-brand-700 hover:bg-brand-800 transition-colors gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessingPayment || isLoadingShipping}
+                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors gap-2"
                 >
-                  {isProcessing ? (
+                  {isProcessingPayment ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Processing...
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Processing Payment...
                     </>
                   ) : (
                     <>
                       <CreditCard className="h-5 w-5" />
-                      Pay {CURRENCY_SYMBOL}{total.toLocaleString('en-IN')}
+                      Proceed to Payment
                     </>
                   )}
                 </button>

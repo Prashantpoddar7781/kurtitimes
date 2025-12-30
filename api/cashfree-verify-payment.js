@@ -1,6 +1,8 @@
-// Vercel Serverless Function - Cashfree Payment Verification
+// Cashfree Verify Payment API
+// This function verifies a payment status
 
 module.exports = async (req, res) => {
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,79 +16,75 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const appId = process.env.CASHFREE_APP_ID;
-    const secretKey = process.env.CASHFREE_SECRET_KEY;
+    const { orderId } = req.body;
 
-    if (!appId || !secretKey) {
-      return res.status(500).json({
-        error: 'Cashfree credentials not configured',
-        message: 'Please set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in Vercel Dashboard'
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
+    const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
+    const CASHFREE_ENV = process.env.CASHFREE_ENV || 'PRODUCTION';
+
+    if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: Missing Cashfree credentials' 
       });
     }
 
-    // Parse request body
-    let body = req.body;
-    if (typeof body === 'string') {
-      body = JSON.parse(body);
-    }
+    const baseUrl = CASHFREE_ENV === 'PRODUCTION' 
+      ? 'https://api.cashfree.com/pg' 
+      : 'https://sandbox.cashfree.com/pg';
 
-    const { order_id, payment_id } = body;
-
-    if (!order_id || !payment_id) {
-      return res.status(400).json({ error: 'Order ID and Payment ID are required' });
-    }
-
-    // Verify payment with Cashfree
-    const cashfreeUrl = process.env.CASHFREE_ENV === 'production'
-      ? `https://api.cashfree.com/pg/orders/${order_id}/payments/${payment_id}`
-      : `https://sandbox.cashfree.com/pg/orders/${order_id}/payments/${payment_id}`;
-
-    const response = await fetch(cashfreeUrl, {
+    // Get order details
+    const orderResponse = await fetch(`${baseUrl}/orders/${orderId}`, {
       method: 'GET',
       headers: {
-        'x-client-id': appId,
-        'x-client-secret': secretKey,
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
         'x-api-version': '2023-08-01',
+        'Content-Type': 'application/json',
       },
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      return res.status(response.status).json({
-        success: false,
-        error: 'Payment verification failed',
-        message: error.message || error.error || 'Unknown error'
+    const orderData = await orderResponse.json();
+
+    if (!orderResponse.ok) {
+      return res.status(orderResponse.status).json({ 
+        error: 'Failed to verify payment',
+        details: orderData 
       });
     }
 
-    const paymentData = await response.json();
+    // Get payment details
+    const paymentResponse = await fetch(`${baseUrl}/orders/${orderId}/payments`, {
+      method: 'GET',
+      headers: {
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2023-08-01',
+        'Content-Type': 'application/json',
+      },
+    });
 
-    // Check payment status
-    if (paymentData.payment_status === 'SUCCESS' || paymentData.payment_status === 'PAID') {
-      return res.status(200).json({
-        success: true,
-        payment_id: payment_id,
-        order_id: order_id,
-        amount: paymentData.payment_amount,
-        status: paymentData.payment_status,
-        payment_method: paymentData.payment_method,
-        payment_message: paymentData.payment_message
-      });
-    } else {
-      return res.status(200).json({
-        success: false,
-        error: 'Payment not successful',
-        status: paymentData.payment_status,
-        message: paymentData.payment_message || 'Payment verification failed'
-      });
-    }
+    const paymentData = await paymentResponse.json();
 
+    return res.status(200).json({
+      success: true,
+      orderStatus: orderData.order_status,
+      paymentStatus: paymentData[0]?.payment_status || 'PENDING',
+      orderAmount: orderData.order_amount,
+      paymentAmount: paymentData[0]?.payment_amount || 0,
+      paymentMethod: paymentData[0]?.payment_method || null,
+      paymentTime: paymentData[0]?.payment_time || null,
+      orderData: orderData,
+      paymentData: paymentData
+    });
   } catch (error) {
-    console.error('Cashfree payment verification error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to verify payment',
-      message: error.message
+    console.error('Cashfree verify payment error:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
     });
   }
 };

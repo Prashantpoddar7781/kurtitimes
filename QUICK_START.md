@@ -1,88 +1,69 @@
-# 🚀 Quick Start Guide - Razorpay Payment Integration
+# Quick Start Guide - Environment Variables Setup
 
-## ✅ Setup Complete!
+This is a quick reference for setting up environment variables in Vercel.
 
-Your Razorpay payment gateway is fully configured and ready to accept payments.
+## Step 1: Access Vercel Environment Variables
 
-## 🔑 Your Keys (Already Configured)
+1. Go to [https://vercel.com/dashboard](https://vercel.com/dashboard)
+2. Select your project: **kurti-times**
+3. Click **Settings** → **Environment Variables**
 
-- **Test Key ID:** `rzp_test_Rv4c4iUwni06DQ`
-- **Test Key Secret:** `2xrHIReHqhLfWAH035dZM0vy`
+## Step 2: Add Shiprocket Variables
 
-## 📋 Answer to Your Question
+Copy and paste these, replacing with your actual values:
 
-**Q: Will I be able to accept payments on this website with this new key?**  
-**A: YES!** Each Razorpay API key is independent. Your new key works perfectly for this website, even if you have other keys for other websites.
+```
+SHIPROCKET_EMAIL=your-email@example.com
+SHIPROCKET_PASSWORD=your-password
+SHIPROCKET_PICKUP_NAME=Kurti Times
+SHIPROCKET_PICKUP_PHONE=9892794421
+SHIPROCKET_PICKUP_ADDRESS_LINE1=G-11-12, RAJHANS IMPERIA
+SHIPROCKET_PICKUP_ADDRESS_LINE2=RING ROAD
+SHIPROCKET_PICKUP_CITY=Surat
+SHIPROCKET_PICKUP_STATE=Gujarat
+SHIPROCKET_PICKUP_PINCODE=395004
+```
 
-## 🏃 Running Locally
+## Step 3: Add Cashfree Variables
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+Copy and paste these, replacing with your actual values:
 
-2. **Start the server:**
-   ```bash
-   npm run server
-   ```
+```
+CASHFREE_APP_ID=merchant-app-id
+CASHFREE_SECRET_KEY=merchant-secret-key
+CASHFREE_MERCHANT_ACCOUNT_ID=admin-account-id-99-percent
+CASHFREE_DEVELOPER_ACCOUNT_ID=your-account-id-1-percent
+CASHFREE_ENV=PRODUCTION
+FRONTEND_URL=https://kurtitimes.vercel.app
+BACKEND_URL=https://kurtitimes.vercel.app
+```
 
-3. **Open in browser:**
-   ```
-   http://localhost:3000
-   ```
+## Step 4: Set Environment Scope
 
-## 🌐 Deploy to Vercel
+- Select **Production**, **Preview**, and **Development** for all variables
+- Click **Save**
 
-1. **Push to GitHub** (already done ✅)
-2. **Connect to Vercel:**
-   - Go to https://vercel.com
-   - Import your GitHub repository
-   - Vercel will auto-detect settings
-   - Environment variables are already in `vercel.json`
+## Step 5: Redeploy
 
-3. **Deploy!** 🎉
+1. Go to **Deployments**
+2. Click **Redeploy** on latest deployment
 
-## 🧪 Test Payments
+## Where to Get Values
 
-Use these test cards:
-- **Card Number:** `4111 1111 1111 1111`
-- **CVV:** Any 3 digits (e.g., `123`)
-- **Expiry:** Any future date (e.g., `12/25`)
-- **Name:** Any name
+### Shiprocket:
+- Email/Password: Your Shiprocket login credentials
+- Address: Admin's warehouse address
 
-## 🔄 How It Works
+### Cashfree:
+- App ID/Secret Key: From Merchant Account → Developer → API Keys
+- Merchant Account ID: From Merchant Account → Settings → Account Details
+- Developer Account ID: From Your Account → Settings → Account Details
 
-1. User adds items to cart
-2. Clicks "Proceed to Checkout"
-3. Enters name, phone, email
-4. **Backend creates Razorpay order** (secure)
-5. Razorpay payment modal opens
-6. User completes payment
-7. **Backend verifies payment** (prevents fraud)
-8. Success! Order confirmation sent
+## Testing
 
-## 🔐 Security Features
+1. Set `CASHFREE_ENV=TEST` for testing
+2. Test with card: `4111 1111 1111 1111`
+3. Set `CASHFREE_ENV=PRODUCTION` for live
 
-✅ Orders created on backend (not frontend)  
-✅ Payment verification on backend  
-✅ Key Secret never exposed  
-✅ Signature verification for all payments
-
-## 📁 Key Files
-
-- `api/create-order.js` - Creates Razorpay orders
-- `api/verify-payment.js` - Verifies payments
-- `server.js` - Local development server
-- `services/razorpayService.ts` - Frontend payment service
-- `vercel.json` - Vercel configuration
-
-## 🆘 Need Help?
-
-- Check `README_PAYMENT_SETUP.md` for detailed docs
-- Razorpay Docs: https://razorpay.com/docs/
-- Test Cards: https://razorpay.com/docs/payments/test-cards/
-
----
-
-**Your payment gateway is ready! Start accepting payments now!** 💳✨
+For detailed setup, see `COMPLETE_SETUP_GUIDE.md`
 

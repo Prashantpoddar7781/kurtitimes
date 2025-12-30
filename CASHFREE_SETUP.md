@@ -1,257 +1,164 @@
-# Cashfree Payment Gateway Setup with Split Payments
+# Cashfree Payment Gateway Setup Guide
 
-## Overview
+This guide will help you configure Cashfree with split payment (99% to merchant, 1% to developer).
 
-This app uses **Cashfree** payment gateway with automatic split payment functionality:
-- **99%** goes to the merchant account (registered on Cashfree)
-- **1%** automatically goes to your developer account as commission
+## Step 1: Create Cashfree Accounts
 
-## Why Cashfree?
+You need **TWO separate Cashfree accounts**:
 
-✅ **Fast Verification** - Quick account setup and verification  
-✅ **Split Payments** - Built-in marketplace model with automatic commission split  
-✅ **Multiple Payment Methods** - Cards, UPI, Wallets, Net Banking  
-✅ **Competitive Fees** - Lower transaction fees  
-✅ **Easy Integration** - Simple API and good documentation  
+### Account 1: Merchant Account (Admin - 99% of payments)
+- This is the main business account
+- Will receive 99% of all payments
+- Use the admin's business details (PAN, bank account, etc.)
 
-## Setup Instructions
+### Account 2: Developer Account (You - 1% of payments)
+- This is your developer account
+- Will receive 1% commission automatically
+- Use your individual/business details
 
-### ⚠️ Important: Two Separate Accounts Required
+## Step 2: Sign Up for Cashfree
 
-You need **TWO separate Cashfree accounts** with **different email addresses**:
-1. **Business Account** - Business email + Business PAN (receives 99%)
-2. **Developer Account** - Your email + Your PAN (receives 1%)
+1. **Merchant Account (Admin)**
+   - Go to [https://www.cashfree.com](https://www.cashfree.com)
+   - Click **Sign Up** → **Business Account**
+   - Use admin's email, business PAN, bank details
+   - Complete KYC verification
+   - Note down: **App ID** and **Secret Key** (from Dashboard → Developer → API Keys)
 
-**Accounts are linked through code configuration, NOT in Cashfree dashboard!**
+2. **Developer Account (You)**
+   - Use a different email address
+   - Sign up as a separate business account
+   - Use your PAN and bank details
+   - Complete KYC verification
+   - Note down: **App ID** and **Secret Key**
 
-### Step 1: Create Two Cashfree Accounts
+## Step 3: Get Account IDs for Split Payment
 
-**Important:** You need TWO separate Cashfree accounts for split payments:
+1. **For Merchant Account (Admin):**
+   - Login to Cashfree Dashboard
+   - Go to **Settings** → **Account Details**
+   - Find your **Account ID** (also called Vendor ID)
+   - This is the ID that will receive 99% of payments
 
-#### Account 1: Merchant Account (Business Owner - 99% recipient)
-- **Who:** The business owner (the person you're making this app for)
-- **PAN to Use:** **Business PAN** (the business's PAN number)
-- **Purpose:** This account will receive 99% of all payments
-- **Steps:**
-  1. Go to https://www.cashfree.com/
-  2. Click **"Sign Up"** or **"Get Started"**
-  3. **Sign up as a regular merchant account** (not marketplace - that comes later)
-  4. When asked for PAN, enter the **business's PAN number**
-  5. Complete all business details (business name, address, bank account, etc.)
-  6. Complete KYC verification
+2. **For Developer Account (You):**
+   - Login to your Cashfree Dashboard
+   - Go to **Settings** → **Account Details**
+   - Find your **Account ID** (Vendor ID)
+   - This is the ID that will receive 1% of payments
 
-#### Account 2: Developer Account (You - 1% commission recipient)
-- **Who:** You (the developer)
-- **PAN to Use:** **Your Individual PAN** (your personal PAN number)
-- **Purpose:** This account will receive 1% commission automatically
-- **Steps:**
-  1. Go to https://www.cashfree.com/
-  2. Click **"Sign Up"** or **"Get Started"**
-  3. Sign up as a regular merchant account
-  4. When asked for PAN, enter **your personal PAN number**
-  5. Complete all your personal/business details
-  6. Complete KYC verification
+## Step 4: Configure Environment Variables in Vercel
 
-**Note:** Marketplace features are enabled AFTER account creation, not during signup. Just sign up as regular merchant accounts first.
+1. **Go to Vercel Dashboard**
+   - Navigate to your project
+   - Select **Settings** → **Environment Variables**
 
-### Step 2: Enable Marketplace Features (Merchant Account)
+2. **Add the following variables:**
 
-1. Log in to the **Merchant's Cashfree Dashboard** (the business owner's account)
-2. Go to **Settings** → **Marketplace** (or **Vendors**)
-3. If you don't see this option:
-   - Contact Cashfree support to enable marketplace features
-   - Or check **Settings** → **Account** → **Account Type**
-   - You may need to request marketplace access
-4. Once marketplace is enabled, note the **Merchant Account ID** (found in Settings → Account Details)
+   ```
+   # Cashfree Merchant Account (Admin - 99%)
+   CASHFREE_APP_ID=your-merchant-app-id
+   CASHFREE_SECRET_KEY=your-merchant-secret-key
+   CASHFREE_MERCHANT_ACCOUNT_ID=merchant-account-id-for-99-percent
+   
+   # Cashfree Developer Account (You - 1%)
+   CASHFREE_DEVELOPER_ACCOUNT_ID=developer-account-id-for-1-percent
+   
+   # Environment (PRODUCTION or TEST)
+   CASHFREE_ENV=PRODUCTION
+   
+   # Webhook Secret (Optional but recommended)
+   CASHFREE_WEBHOOK_SECRET=your-webhook-secret
+   
+   # Frontend URL (for return URL)
+   FRONTEND_URL=https://kurtitimes.vercel.app
+   
+   # Backend URL (for webhook)
+   BACKEND_URL=https://kurtitimes.vercel.app
+   ```
 
-### Step 3: Get API Credentials (Use Merchant Account)
+3. **Important Notes:**
+   - `CASHFREE_APP_ID` and `CASHFREE_SECRET_KEY` should be from the **Merchant Account** (admin's account)
+   - `CASHFREE_MERCHANT_ACCOUNT_ID` = Admin's Account ID (receives 99%)
+   - `CASHFREE_DEVELOPER_ACCOUNT_ID` = Your Account ID (receives 1%)
+   - Set `CASHFREE_ENV=TEST` for testing, `PRODUCTION` for live payments
+   - Replace URLs with your actual domain
 
-1. Log in to the **Merchant's Cashfree Dashboard**: https://merchant.cashfree.com/
-2. Go to **Settings** → **Developer** → **API Keys**
-3. Copy:
-   - **App ID** (Client ID)
-   - **Secret Key** (Client Secret)
-4. Note the **Merchant Account ID** (from Settings → Account Details)
+4. **Redeploy your application**
+   - After adding environment variables, redeploy
 
-### Step 4: Set Up Split Payments
+## Step 5: Configure Webhook (Optional but Recommended)
 
-#### In Merchant's Cashfree Dashboard:
+1. **In Merchant Account Dashboard:**
+   - Go to **Settings** → **Webhooks**
+   - Add webhook URL: `https://your-domain.vercel.app/api/cashfree-webhook`
+   - Select events:
+     - `PAYMENT_SUCCESS_WEBHOOK`
+     - `PAYMENT_FAILED_WEBHOOK`
+   - Save the webhook secret and add it to `CASHFREE_WEBHOOK_SECRET`
 
-1. Go to **Settings** → **Marketplace** → **Vendors** (or **Sub-merchants**)
-2. Click **"Add Vendor"** or **"Add Sub-merchant"**
-3. Enter your **Developer Account ID** (from your Cashfree account)
-4. Set commission percentage: **1%** (or configure as needed)
-5. Save the vendor/sub-merchant
+## Step 6: Test the Integration
 
-#### Get Your Developer Account ID:
+### Test Mode:
+1. Set `CASHFREE_ENV=TEST` in environment variables
+2. Use Cashfree test credentials (sandbox mode)
+3. Test with test card numbers:
+   - Success: `4111 1111 1111 1111`
+   - CVV: Any 3 digits
+   - Expiry: Any future date
 
-1. Log in to **Your Cashfree Dashboard** (your developer account)
-2. Go to **Settings** → **Account Details**
-3. Copy your **Account ID** (this is `CASHFREE_DEVELOPER_ACCOUNT_ID`)
+### Production Mode:
+1. Set `CASHFREE_ENV=PRODUCTION`
+2. Ensure both accounts are fully verified
+3. Test with a small real transaction first
 
-**Alternative Method (If Marketplace Not Available):**
+## Step 7: Verify Split Payment
 
-If marketplace features aren't available, you can use Cashfree's **Split Payment API** directly in the code (which we've already implemented). You just need both Account IDs.
+After a successful payment:
+1. Check Merchant Account (Admin) → **Settlements**
+   - Should show 99% of the order amount
+2. Check Developer Account (You) → **Settlements**
+   - Should show 1% of the order amount
+3. Verify the split in **Transaction Details**
 
-### Step 5: Configure Environment Variables in Vercel
+## How Split Payment Works
 
-Go to your Vercel project dashboard → **Settings** → **Environment Variables** and add:
-
-#### Required Variables:
-```
-CASHFREE_APP_ID=your_app_id_here
-CASHFREE_SECRET_KEY=your_secret_key_here
-CASHFREE_ENV=sandbox  (or 'production' for live)
-```
-
-#### For Split Payments (Required for 1% Commission):
-```
-CASHFREE_MERCHANT_ACCOUNT_ID=merchant_account_id_from_merchant_dashboard
-CASHFREE_DEVELOPER_ACCOUNT_ID=your_account_id_from_your_dashboard
-```
-
-**Where to find Account IDs:**
-- **Merchant Account ID:** Log in to merchant's Cashfree → Settings → Account Details → Account ID
-- **Developer Account ID:** Log in to your Cashfree → Settings → Account Details → Account ID
-
-**Note:** If split payment variables are not set, the full amount will go to the merchant account. Set them up to enable automatic 1% commission.
-
-### Step 6: Test Mode vs Production
-
-#### Test Mode (Sandbox):
-- Use `CASHFREE_ENV=sandbox`
-- Test credentials available in Cashfree Dashboard
-- Use test cards for testing
-- No real money transactions
-
-#### Production Mode:
-- Use `CASHFREE_ENV=production`
-- Use live credentials
-- Real money transactions
-- Split payments will work automatically
-
-## Split Payment Configuration
-
-The split payment is configured in `api/cashfree-create-order.js`:
-
-```javascript
-// 1% commission to developer
-const commissionAmount = Math.round(totalAmount * 0.01);
-
-// 99% to merchant
-const merchantAmount = totalAmount - commissionAmount;
-```
-
-### How It Works:
-
-1. Customer makes a payment of ₹1000
-2. Cashfree automatically splits:
-   - ₹990 (99%) → Merchant's bank account
-   - ₹10 (1%) → Your developer account
-3. Both transfers happen automatically
-4. No manual intervention needed
-
-## Payment Flow
-
-1. User adds items to cart
-2. User clicks "Proceed to Checkout"
-3. User enters shipping details
-4. **Backend creates Cashfree order** with split payment configuration
-5. Cashfree payment modal opens
-6. User completes payment
-7. **Backend verifies payment**
-8. On success:
-   - Payment is split automatically (99% + 1%)
-   - Order confirmation sent via WhatsApp
-   - Shipment created (if Shiprocket configured)
-
-## Testing
-
-### Test Cards (Sandbox Mode):
-
-**Success Card:**
-- Card Number: `4111 1111 1111 1111`
-- CVV: Any 3 digits (e.g., `123`)
-- Expiry: Any future date (e.g., `12/25`)
-- Name: Any name
-
-**Failure Card:**
-- Card Number: `4000 0000 0000 0002`
-- CVV: Any 3 digits
-- Expiry: Any future date
-
-### Test UPI:
-- Use any UPI ID in test mode
-- Payment will be simulated
-
-## API Endpoints
-
-### 1. Create Order (with Split Payment)
-- **Endpoint:** `POST /api/cashfree-create-order`
-- **Purpose:** Creates payment order with split configuration
-- **Returns:** Payment session ID
-
-### 2. Verify Payment
-- **Endpoint:** `POST /api/cashfree-verify-payment`
-- **Purpose:** Verifies payment status
-- **Returns:** Payment verification result
-
-### 3. Webhook Handler
-- **Endpoint:** `POST /api/cashfree-webhook`
-- **Purpose:** Receives payment status updates from Cashfree
-- **Note:** Configure webhook URL in Cashfree Dashboard
-
-## Webhook Configuration
-
-1. In Cashfree Dashboard, go to **Settings** → **Webhooks**
-2. Add webhook URL: `https://your-domain.vercel.app/api/cashfree-webhook`
-3. Select events:
-   - `PAYMENT_SUCCESS_WEBHOOK`
-   - `PAYMENT_FAILED_WEBHOOK`
-   - `PAYMENT_USER_DROPPED_WEBHOOK`
+- **Order Amount**: ₹1,000
+- **Merchant (Admin) receives**: ₹990 (99%)
+- **Developer (You) receives**: ₹10 (1%)
+- **Automatic**: Split happens automatically via Cashfree API
+- **Settlement**: Each account receives their share separately
 
 ## Troubleshooting
 
-### Issue: Split payments not working
-- **Solution:** Ensure both `CASHFREE_MERCHANT_ACCOUNT_ID` and `CASHFREE_DEVELOPER_ACCOUNT_ID` are set
-- Verify both accounts are active in Cashfree
-- Check that marketplace model is enabled
+### Issue: "Failed to create order"
+- **Solution**: 
+  - Check that all environment variables are set correctly
+  - Verify App ID and Secret Key are from merchant account
+  - Ensure accounts are verified
 
-### Issue: Payment verification fails
-- **Solution:** Check API credentials are correct
-- Verify environment variable `CASHFREE_ENV` matches your credentials (sandbox/production)
-- Check Cashfree Dashboard for any account restrictions
+### Issue: "Split payment not working"
+- **Solution**:
+  - Verify both Account IDs are correct
+  - Check that both accounts are active and verified
+  - Ensure you're using the correct API version
 
-### Issue: Webhook not receiving events
-- **Solution:** Verify webhook URL is accessible
-- Check webhook secret is configured (if using)
-- Ensure webhook events are enabled in Cashfree Dashboard
-
-## Support
-
-- **Cashfree Documentation:** https://docs.cashfree.com/
-- **Cashfree Support:** support@cashfree.com
-- **API Reference:** https://docs.cashfree.com/docs/api-reference
-
-## Migration from Razorpay
-
-If you were using Razorpay before:
-1. ✅ Service updated: `services/cashfreeService.ts` replaces `razorpayService.ts`
-2. ✅ API endpoints updated: New Cashfree endpoints created
-3. ✅ CartModal updated: Now uses Cashfree service
-4. ⚠️ **Action Required:** Set up Cashfree account and configure environment variables
+### Issue: "Payment successful but split not reflected"
+- **Solution**:
+  - Check Cashfree dashboard for both accounts
+  - Split may take a few minutes to reflect
+  - Contact Cashfree support if issue persists
 
 ## Important Notes
 
-⚠️ **Split Payments:** The 1% commission split only works if:
-- Both merchant and developer accounts are configured
-- Marketplace model is enabled in Cashfree
-- Both accounts are verified and active
+1. **Account Linking**: The two accounts are linked via the split payment API, not through Cashfree dashboard
+2. **Settlement**: Each account receives money in their own bank account
+3. **Commissions**: The 1% is automatically deducted and sent to developer account
+4. **Taxes**: Each account is responsible for their own tax compliance
 
-⚠️ **Settlement:** 
-- Merchant receives 99% in their Cashfree account
-- You receive 1% in your Cashfree account
-- Both can withdraw to their respective bank accounts
+## Support
 
-⚠️ **Fees:** Cashfree charges transaction fees on the total amount. The split happens after fees are deducted.
+For Cashfree-specific issues:
+- Cashfree Support: support@cashfree.com
+- Cashfree Documentation: [https://docs.cashfree.com](https://docs.cashfree.com)
+- Cashfree API Reference: [https://docs.cashfree.com/reference](https://docs.cashfree.com/reference)
 

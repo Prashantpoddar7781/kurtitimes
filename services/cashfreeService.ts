@@ -1,168 +1,164 @@
-// Cashfree Payment Service with Split Payment Support
-// Supports marketplace model with automatic commission split (1% to developer, 99% to merchant)
+// Cashfree Service for Frontend
+// Handles payment initiation and verification
 
-declare global {
-  interface Window {
-    cashfree: any;
+export interface CreateOrderRequest {
+  orderId: string;
+  orderAmount: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+}
+
+export interface CreateOrderResponse {
+  success: boolean;
+  orderId?: string;
+  paymentSessionId?: string;
+  paymentUrl?: string;
+  orderStatus?: string;
+  splitDetails?: {
+    merchantAmount: number;
+    developerAmount: number;
+    totalAmount: number;
+  };
+  error?: string;
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  orderStatus?: string;
+  paymentStatus?: string;
+  orderAmount?: number;
+  paymentAmount?: number;
+  paymentMethod?: string;
+  paymentTime?: string;
+  error?: string;
+}
+
+// Initialize Cashfree payment
+export const initiatePayment = async (
+  request: CreateOrderRequest
+): Promise<CreateOrderResponse> => {
+  try {
+    const response = await fetch('/api/cashfree-create-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create payment order');
+    }
+
+    return {
+      success: true,
+      orderId: data.orderId,
+      paymentSessionId: data.paymentSessionId,
+      paymentUrl: data.paymentUrl,
+      orderStatus: data.orderStatus,
+      splitDetails: data.splitDetails,
+    };
+  } catch (error) {
+    console.error('Error initiating payment:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to initiate payment',
+    };
   }
-}
+};
 
-export interface PaymentOptions {
-  amount: number; // Amount in paise (e.g., 1000 = ₹10.00)
-  currency: string;
-  name: string;
-  phone: string;
-  email?: string;
-  description: string;
-  onSuccess: (paymentId: string, orderId: string) => void;
-  onFailure: (error: any) => void;
-}
+// Verify payment status
+export const verifyPayment = async (orderId: string): Promise<VerifyPaymentResponse> => {
+  try {
+    const response = await fetch('/api/cashfree-verify-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ orderId }),
+    });
 
-export const loadCashfreeScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (window.cashfree) {
-      resolve(true);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to verify payment');
+    }
+
+    return {
+      success: true,
+      orderStatus: data.orderStatus,
+      paymentStatus: data.paymentStatus,
+      orderAmount: data.orderAmount,
+      paymentAmount: data.paymentAmount,
+      paymentMethod: data.paymentMethod,
+      paymentTime: data.paymentTime,
+    };
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to verify payment',
+    };
+  }
+};
+
+// Load Cashfree Checkout SDK
+export const loadCashfreeSDK = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (window.Cashfree) {
+      resolve();
       return;
     }
 
     const script = document.createElement('script');
     script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-    script.onload = () => {
-      // Initialize Cashfree
-      if (window.cashfree) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    };
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Cashfree SDK'));
+    document.head.appendChild(script);
   });
 };
 
-export const initiatePayment = async (options: PaymentOptions): Promise<void> => {
+// Open Cashfree checkout
+export const openCashfreeCheckout = async (
+  paymentSessionId: string,
+  onSuccess: (orderId: string) => void,
+  onFailure: (error: string) => void
+): Promise<void> => {
   try {
-    // Create order on backend first (with split payment configuration)
-    const orderResponse = await fetch('/api/cashfree-create-order', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        amount: options.amount,
-        currency: options.currency || 'INR',
-        customer_details: {
-          customer_name: options.name,
-          customer_phone: options.phone,
-          customer_email: options.email || '',
-        },
-        order_meta: {
-          return_url: window.location.origin + '/payment-success',
-          notify_url: window.location.origin + '/api/cashfree-webhook',
-        },
-        order_note: options.description,
-      }),
+    await loadCashfreeSDK();
+
+    if (!window.Cashfree) {
+      throw new Error('Cashfree SDK not loaded');
+    }
+
+    const cashfree = new window.Cashfree({
+      mode: process.env.CASHFREE_ENV === 'PRODUCTION' ? 'production' : 'sandbox',
     });
 
-    if (!orderResponse.ok) {
-      let errorMessage = 'Failed to create order';
-      try {
-        const error = await orderResponse.json();
-        errorMessage = error.message || error.error || errorMessage;
-      } catch (e) {
-        const text = await orderResponse.text();
-        errorMessage = text || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-
-    const orderData = await orderResponse.json();
-
-    if (!orderData.payment_session_id) {
-      throw new Error('Failed to get payment session ID');
-    }
-
-    // Load Cashfree script
-    const loaded = await loadCashfreeScript();
-    if (!loaded || !window.cashfree) {
-      throw new Error('Failed to load Cashfree SDK');
-    }
-
-    // Initialize Cashfree Checkout
-    const cashfree = window.cashfree;
-
-    // Open Cashfree checkout
     cashfree.checkout({
-      paymentSessionId: orderData.payment_session_id,
-      redirectTarget: '_modal', // Opens in modal popup
+      paymentSessionId,
+      redirectTarget: '_self',
     }).then((result: any) => {
-      // Check if payment was successful
-      if (result && result.payment) {
-        // Payment completed - verify on backend
-        const paymentId = result.payment.paymentId || result.payment.payment_id;
-        verifyPayment(orderData.order_id, paymentId)
-          .then((verified) => {
-            if (verified) {
-              options.onSuccess(paymentId, orderData.order_id);
-            } else {
-              options.onFailure({
-                code: 'VERIFICATION_FAILED',
-                message: 'Payment verification failed'
-              });
-            }
-          })
-          .catch((error) => {
-            options.onFailure({
-              code: 'VERIFICATION_ERROR',
-              message: error.message || 'Failed to verify payment'
-            });
-          });
-      } else if (result && result.error) {
-        // Payment error
-        options.onFailure({
-          code: 'PAYMENT_ERROR',
-          message: result.error.message || 'Payment failed'
-        });
+      if (result.error) {
+        onFailure(result.error.message || 'Payment failed');
       } else {
-        // Payment cancelled or closed
-        options.onFailure({
-          code: 'PAYMENT_CANCELLED',
-          message: 'Payment cancelled by user'
-        });
+        onSuccess(result.orderId || '');
       }
-    }).catch((error: any) => {
-      // Handle checkout initialization errors
-      options.onFailure({
-        code: 'CHECKOUT_ERROR',
-        message: error.message || 'Failed to open payment checkout'
-      });
     });
-
-  } catch (error: any) {
-    options.onFailure({
-      code: 'INITIATION_ERROR',
-      message: error.message || 'Failed to initiate payment'
-    });
-  }
-};
-
-const verifyPayment = async (orderId: string, paymentId: string): Promise<boolean> => {
-  try {
-    const verifyResponse = await fetch('/api/cashfree-verify-payment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        order_id: orderId,
-        payment_id: paymentId,
-      }),
-    });
-
-    const verifyData = await verifyResponse.json();
-    return verifyData.success === true;
   } catch (error) {
-    return false;
+    console.error('Error opening Cashfree checkout:', error);
+    onFailure(error instanceof Error ? error.message : 'Failed to open payment gateway');
   }
 };
+
+// Extend Window interface for Cashfree
+declare global {
+  interface Window {
+    Cashfree?: any;
+  }
+}
 
