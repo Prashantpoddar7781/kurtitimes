@@ -1,166 +1,124 @@
-// Shiprocket Service for Frontend
-// Handles shipping rate calculation and shipment creation
+export interface ShiprocketAuthResponse {
+  token: string;
+}
+
+export interface ShiprocketRate {
+  courier_id: number;
+  courier_name: string;
+  rate: number;
+  estimated_delivery_days: string;
+}
+
+export interface ShiprocketShipmentResponse {
+  shipment_id: number;
+  status: string;
+  awb_code?: string;
+}
 
 export interface ShippingAddress {
-  addressLine1: string;
-  addressLine2?: string;
+  name: string;
+  phone: string;
+  address_line1: string;
+  address_line2?: string;
   city: string;
   state: string;
   pincode: string;
+  country: string;
 }
 
-export interface ShippingRate {
-  available: boolean;
-  cost: number;
-  estimatedDays: number;
-  courier?: string;
-  message?: string;
-}
+export const getShiprocketToken = async (): Promise<string> => {
+  const response = await fetch('/api/shiprocket-auth');
+  if (!response.ok) {
+    throw new Error('Failed to authenticate with Shiprocket');
+  }
+  const data: ShiprocketAuthResponse = await response.json();
+  return data.token;
+};
 
-export interface ShipmentResponse {
-  success: boolean;
-  shipmentId?: string;
-  awbCode?: string;
-  channelOrderId?: string;
-  error?: string;
-}
-
-// Get shipping rates for a pincode
 export const getShippingRates = async (
   pincode: string,
   weight: number = 0.5
-): Promise<ShippingRate> => {
-  try {
-    const response = await fetch('/api/shiprocket-rates', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ pincode, weight }),
-    });
+): Promise<ShiprocketRate[]> => {
+  const token = await getShiprocketToken();
+  
+  const response = await fetch('/api/shiprocket-rates', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      pickup_pincode: '395004',
+      delivery_pincode: pincode,
+      weight: weight,
+      cod_amount: 0,
+    }),
+  });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to get shipping rates');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error getting shipping rates:', error);
-    return {
-      available: false,
-      cost: 0,
-      estimatedDays: 0,
-      message: error instanceof Error ? error.message : 'Failed to calculate shipping',
-    };
+  if (!response.ok) {
+    throw new Error('Failed to fetch shipping rates');
   }
+
+  return response.json();
 };
 
-// Create shipment in Shiprocket
 export const createShipment = async (
   orderId: string,
-  customerName: string,
-  customerPhone: string,
-  customerEmail: string,
+  items: Array<{ name: string; sku: string; units: number; selling_price: number }>,
   shippingAddress: ShippingAddress,
-  orderItems: Array<{ id: number; name: string; quantity: number; price: number }>,
-  paymentMethod: string,
-  orderAmount: number
-): Promise<ShipmentResponse> => {
-  try {
-    const response = await fetch('/api/shiprocket-create-shipment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        orderId,
-        customerName,
-        customerPhone,
-        customerEmail,
-        shippingAddress,
-        orderItems,
-        paymentMethod,
-        orderAmount,
-      }),
-    });
+  paymentMethod: string = 'prepaid'
+): Promise<ShiprocketShipmentResponse> => {
+  const token = await getShiprocketToken();
+  
+  const response = await fetch('/api/shiprocket-create-shipment', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      order_id: orderId,
+      items,
+      shipping_address: shippingAddress,
+      payment_method: paymentMethod,
+    }),
+  });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to create shipment');
-    }
-
-    return {
-      success: true,
-      shipmentId: data.shipmentId,
-      awbCode: data.awbCode,
-      channelOrderId: data.channelOrderId,
-    };
-  } catch (error) {
-    console.error('Error creating shipment:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create shipment',
-    };
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create shipment: ${error}`);
   }
+
+  return response.json();
 };
 
-// Generate shipping label
-export const generateLabel = async (shipmentId: string): Promise<{ success: boolean; labelUrl?: string; error?: string }> => {
-  try {
-    const response = await fetch('/api/shiprocket-generate-label', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ shipmentId }),
-    });
+export const generateLabel = async (shipmentId: number): Promise<{ label_url: string }> => {
+  const response = await fetch('/api/shiprocket-generate-label', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ shipment_id: shipmentId }),
+  });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to generate label');
-    }
-
-    return {
-      success: true,
-      labelUrl: data.labelUrl,
-    };
-  } catch (error) {
-    console.error('Error generating label:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate label',
-    };
+  if (!response.ok) {
+    throw new Error('Failed to generate label');
   }
+
+  return response.json();
 };
 
-// Request pickup
-export const requestPickup = async (shipmentId: string): Promise<{ success: boolean; error?: string }> => {
-  try {
-    const response = await fetch('/api/shiprocket-request-pickup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ shipmentId }),
-    });
+export const requestPickup = async (shipmentId: number): Promise<{ success: boolean }> => {
+  const response = await fetch('/api/shiprocket-request-pickup', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ shipment_id: shipmentId }),
+  });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to request pickup');
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error requesting pickup:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to request pickup',
-    };
+  if (!response.ok) {
+    throw new Error('Failed to request pickup');
   }
+
+  return response.json();
 };
 

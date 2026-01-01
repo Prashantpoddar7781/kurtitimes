@@ -1,13 +1,28 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
+import LandingPage from './components/LandingPage';
+import AdminLoginModal from './components/AdminLoginModal';
+import AdminDashboard from './components/AdminDashboard';
+import UserAuthModal from './components/UserAuthModal';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Filter, Phone, Mail, Tag, ChevronDown, MapPin, Send, Star, MessageCircle } from 'lucide-react';
 
+const ADMIN_USER_ID = '7624029175';
+const ADMIN_PASSWORD = '7624029175';
+
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+  const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [currentView, setCurrentView] = useState('home');
   const [selectedCategory, setSelectedCategory] = useState<Category>(Category.ALL);
   
@@ -27,14 +42,105 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeInfoPage, setActiveInfoPage] = useState<string | null>(null);
 
+  // Load products from localStorage on mount
+  useEffect(() => {
+    const savedProducts = localStorage.getItem('kurtitimes_products');
+    if (savedProducts) {
+      try {
+        const parsed = JSON.parse(savedProducts);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProducts(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to load products from localStorage', e);
+      }
+    }
+  }, []);
+
+  // Save products to localStorage whenever they change
+  useEffect(() => {
+    if (products.length > 0) {
+      localStorage.setItem('kurtitimes_products', JSON.stringify(products));
+    }
+  }, [products]);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const authStatus = localStorage.getItem('kurtitimes_authenticated');
+    const adminStatus = localStorage.getItem('kurtitimes_admin');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+    if (adminStatus === 'true') {
+      setIsAdmin(true);
+    }
+  }, []);
+
+  const handleLogoClick = () => {
+    const newCount = logoClickCount + 1;
+    setLogoClickCount(newCount);
+    
+    if (newCount >= 3) {
+      setIsAdminLoginOpen(true);
+      setLogoClickCount(0);
+    }
+    
+    // Reset count after 2 seconds
+    setTimeout(() => setLogoClickCount(0), 2000);
+  };
+
+  const handleAdminLogin = (userId: string, password: string): boolean => {
+    if (userId === ADMIN_USER_ID && password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setIsAuthenticated(true);
+      setIsAdminDashboardOpen(true);
+      localStorage.setItem('kurtitimes_admin', 'true');
+      localStorage.setItem('kurtitimes_authenticated', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const handleUserAuth = (phone: string) => {
+    setIsAuthenticated(true);
+    localStorage.setItem('kurtitimes_authenticated', 'true');
+    localStorage.setItem('kurtitimes_user_phone', phone);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    setIsAdminDashboardOpen(false);
+    localStorage.removeItem('kurtitimes_authenticated');
+    localStorage.removeItem('kurtitimes_admin');
+    setCurrentView('home');
+  };
+
+  const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
+    const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+    const product: Product = {
+      ...newProduct,
+      id: maxId + 1,
+    };
+    setProducts([...products, product]);
+  };
+
+  const handleUpdateProduct = (id: number, updates: Partial<Product>) => {
+    setProducts(products.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  const handleDeleteProduct = (id: number) => {
+    setProducts(products.filter(p => p.id !== id));
+  };
+
   // Randomly select 3 best sellers once
   const bestSellers = useMemo(() => {
-    return [...PRODUCTS].sort(() => 0.5 - Math.random()).slice(0, 3);
-  }, []);
+    return [...products].sort(() => 0.5 - Math.random()).slice(0, 3);
+  }, [products]);
 
   // Filter products based on selected category and price
   const filteredProducts = useMemo(() => {
-    let result = PRODUCTS;
+    let result = products;
 
     if (selectedCategory !== Category.ALL) {
       result = result.filter(product => product.category === selectedCategory);
@@ -48,7 +154,7 @@ const App: React.FC = () => {
     }
 
     return result;
-  }, [selectedCategory, selectedPriceFilter]);
+  }, [products, selectedCategory, selectedPriceFilter]);
 
   // Cart actions
   const addToCart = (product: Product) => {
@@ -117,8 +223,6 @@ const App: React.FC = () => {
              </ul>
           </div>
         );
-      // Removed 'contact' case here as it is now a full page, 
-      // but keeping fallback just in case or for other modals
       default: return null;
     }
   };
@@ -137,6 +241,52 @@ const App: React.FC = () => {
     setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Show landing page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LandingPage
+          onLogoClick={handleLogoClick}
+          onSignInClick={() => setIsUserAuthOpen(true)}
+        />
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onLogin={handleAdminLogin}
+        />
+        <UserAuthModal
+          isOpen={isUserAuthOpen}
+          onClose={() => setIsUserAuthOpen(false)}
+          onAuth={handleUserAuth}
+        />
+      </>
+    );
+  }
+
+  // Show admin dashboard if admin is logged in
+  if (isAdmin && isAdminDashboardOpen) {
+    return (
+      <>
+        <AdminDashboard
+          products={products}
+          onUpdateProduct={handleUpdateProduct}
+          onDeleteProduct={handleDeleteProduct}
+          onAddProduct={handleAddProduct}
+          onClose={() => {
+            setIsAdminDashboardOpen(false);
+            setCurrentView('home');
+          }}
+        />
+        <button
+          onClick={handleLogout}
+          className="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 z-50"
+        >
+          Logout
+        </button>
+      </>
+    );
+  }
 
   const renderContent = () => {
     switch (currentView) {
@@ -157,7 +307,6 @@ const App: React.FC = () => {
                {bestSellers.map((product, idx) => (
                  <div key={product.id} className="w-full max-w-sm" style={{ animationDelay: `${idx * 100}ms` }}>
                     <div className="relative mb-4">
-                      {/* Bestseller Badge */}
                       <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-gold-500 to-gold-600 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg transform -rotate-2">
                         <Star className="h-3 w-3 fill-white" /> BESTSELLER
                       </div>
@@ -180,13 +329,11 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-              {/* Contact Info */}
               <div className="space-y-8">
                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-brand-50 hover:shadow-md transition-shadow">
                     <h3 className="text-2xl font-serif font-bold text-brand-800 mb-8">Contact Information</h3>
                     
                     <div className="space-y-6">
-                      {/* Phone Link */}
                       <a href="tel:9892794421" className="flex items-start gap-5 group hover:bg-gray-50 p-4 -mx-4 rounded-xl transition-colors">
                         <div className="bg-brand-50 p-4 rounded-full text-brand-600 shrink-0 group-hover:bg-brand-100 transition-colors">
                           <Phone className="h-6 w-6" />
@@ -198,7 +345,6 @@ const App: React.FC = () => {
                         </div>
                       </a>
 
-                      {/* WhatsApp Link */}
                       <a href="https://wa.me/919892794421" target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 group hover:bg-gray-50 p-4 -mx-4 rounded-xl transition-colors">
                         <div className="bg-green-50 p-4 rounded-full text-[#25D366] shrink-0 group-hover:bg-green-100 transition-colors">
                           <MessageCircle className="h-6 w-6" />
@@ -210,7 +356,6 @@ const App: React.FC = () => {
                         </div>
                       </a>
 
-                      {/* Email Link */}
                       <a href="mailto:kurtitimes@gmail.com" className="flex items-start gap-5 group hover:bg-gray-50 p-4 -mx-4 rounded-xl transition-colors">
                         <div className="bg-brand-50 p-4 rounded-full text-brand-600 shrink-0 group-hover:bg-brand-100 transition-colors">
                           <Mail className="h-6 w-6" />
@@ -221,7 +366,6 @@ const App: React.FC = () => {
                         </div>
                       </a>
 
-                      {/* Address */}
                       <div className="flex items-start gap-5 p-4 -mx-4">
                         <div className="bg-brand-50 p-4 rounded-full text-brand-600 shrink-0">
                           <MapPin className="h-6 w-6" />
@@ -236,7 +380,6 @@ const App: React.FC = () => {
                  </div>
               </div>
 
-              {/* Message Form */}
               <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
                 <h3 className="text-2xl font-serif font-bold text-brand-800 mb-6">Send us a Message</h3>
                 <form className="space-y-6" onSubmit={(e) => {
@@ -284,7 +427,6 @@ const App: React.FC = () => {
       default:
         return (
           <>
-            {/* Hero Section */}
             <div className="relative bg-brand-900 text-white overflow-hidden animate-in fade-in duration-700">
               <div className="absolute inset-0">
                 <img 
@@ -313,7 +455,6 @@ const App: React.FC = () => {
             </div>
 
             <main id="shop-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              {/* Filters Section */}
               <div className="mb-10 bg-white p-6 rounded-xl shadow-sm border border-brand-50">
                 <div className="flex items-center gap-2 mb-6 text-brand-900 border-b border-brand-100 pb-2">
                   <Filter className="h-5 w-5" />
@@ -321,7 +462,6 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Category Filter */}
                   <div>
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Categories</h3>
                     <div className="flex flex-wrap gap-2">
@@ -341,7 +481,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Price Filter (Dropdown) */}
                   <div className="w-full sm:w-72">
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1">
                       <Tag className="h-3 w-3" /> Price Range
@@ -369,7 +508,6 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Product Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 xl:gap-8">
                 {filteredProducts.map((product) => (
                   <ProductCard 
@@ -413,6 +551,9 @@ const App: React.FC = () => {
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         onNavigate={handleNavigation}
         activePage={currentView}
+        onLogoClick={handleLogoClick}
+        onSignInClick={() => setIsUserAuthOpen(true)}
+        onBackToLanding={handleLogout}
       />
 
       <CartModal 
@@ -431,12 +572,10 @@ const App: React.FC = () => {
         {renderInfoContent()}
       </InfoModal>
 
-      {/* Main Content Area */}
       <div className="flex-grow">
         {renderContent()}
       </div>
 
-      {/* Footer */}
       <footer className="bg-brand-950 text-brand-100 py-12 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20">

@@ -1,14 +1,50 @@
-// Shiprocket Shipping Rates API
-// This function gets shipping rates for a given pincode
+const https = require('https');
+
+const getToken = () => {
+  return new Promise((resolve, reject) => {
+    const email = process.env.SHIPROCKET_EMAIL;
+    const password = process.env.SHIPROCKET_PASSWORD;
+
+    const authData = JSON.stringify({ email, password });
+
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/auth/login',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(authData),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.token) resolve(response.token);
+          else reject(new Error('No token received'));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(authData);
+    req.end();
+  });
+};
 
 module.exports = async (req, res) => {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   if (req.method !== 'POST') {
@@ -16,115 +52,80 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { pincode, weight } = req.body;
+    const { pickup_pincode, delivery_pincode, weight, cod_amount } = req.body;
 
-    if (!pincode || !weight) {
-      return res.status(400).json({ error: 'Pincode and weight are required' });
+    if (!pickup_pincode || !delivery_pincode) {
+      return res.status(400).json({ error: 'Pincodes are required' });
     }
 
-    // First, get authentication token
-    const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL;
-    const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
+    const token = await getToken();
 
-    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Shiprocket credentials' 
-      });
-    }
-
-    // Authenticate
-    const authResponse = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: SHIPROCKET_EMAIL,
-        password: SHIPROCKET_PASSWORD,
-      }),
+    const rateData = JSON.stringify({
+      pickup_pincode,
+      delivery_pincode,
+      weight: weight || 0.5,
+      cod_amount: cod_amount || 0,
     });
 
-    const authData = await authResponse.json();
-
-    if (!authResponse.ok) {
-      return res.status(authResponse.status).json({ 
-        error: 'Authentication failed',
-        details: authData 
-      });
-    }
-
-    const token = authData.token;
-
-    // Get pickup location (warehouse address)
-    const pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE || '395004'; // Default to Surat
-    const pickupCity = process.env.SHIPROCKET_PICKUP_CITY || 'Surat';
-    const pickupState = process.env.SHIPROCKET_PICKUP_STATE || 'Gujarat';
-
-    // Get shipping rates
-    const ratesResponse = await fetch('https://apiv2.shiprocket.in/v1/external/courier/serviceability/', {
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/courier/serviceability/',
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-      },
-    });
-
-    // Use the serviceability API with query parameters
-    const serviceabilityUrl = new URL('https://apiv2.shiprocket.in/v1/external/courier/serviceability/');
-    serviceabilityUrl.searchParams.append('pickup_postcode', pickupPincode);
-    serviceabilityUrl.searchParams.append('delivery_postcode', pincode);
-    serviceabilityUrl.searchParams.append('weight', weight.toString());
-    serviceabilityUrl.searchParams.append('cod', '1'); // Cash on delivery enabled
-
-    const serviceabilityResponse = await fetch(serviceabilityUrl.toString(), {
-      method: 'GET',
-      headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
-    });
+    };
 
-    const serviceabilityData = await serviceabilityResponse.json();
+    const queryString = new URLSearchParams({
+      pickup_pincode,
+      delivery_pincode,
+      weight: (weight || 0.5).toString(),
+      cod: (cod_amount > 0 ? 1 : 0).toString(),
+    }).toString();
 
-    if (!serviceabilityResponse.ok) {
-      return res.status(serviceabilityResponse.status).json({ 
-        error: 'Failed to get shipping rates',
-        details: serviceabilityData 
+    options.path += '?' + queryString;
+
+    const rateRequest = https.request(options, (rateRes) => {
+      let data = '';
+
+      rateRes.on('data', (chunk) => {
+        data += chunk;
       });
-    }
 
-    // Extract available couriers and their rates
-    const availableCouriers = serviceabilityData.data?.available_courier_companies || [];
-    
-    if (availableCouriers.length === 0) {
-      return res.status(200).json({
-        available: false,
-        message: 'No courier service available for this pincode',
-        estimatedDays: 0,
-        cost: 0
+      rateRes.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          
+          if (rateRes.statusCode === 200 && response.data) {
+            const rates = response.data.available_courier_companies || [];
+            res.status(200).json(rates.map(courier => ({
+              courier_id: courier.courier_company_id,
+              courier_name: courier.courier_name,
+              rate: courier.rate,
+              estimated_delivery_days: courier.estimated_delivery_days || '3-5',
+            })));
+          } else {
+            res.status(rateRes.statusCode || 500).json({
+              error: response.message || 'Failed to fetch rates',
+            });
+          }
+        } catch (parseError) {
+          console.error('Parse error:', parseError);
+          res.status(500).json({ error: 'Invalid response from Shiprocket' });
+        }
       });
-    }
-
-    // Find the cheapest courier
-    const cheapestCourier = availableCouriers.reduce((prev, curr) => {
-      const prevRate = prev.rate || prev.estimated_delivery_days ? prev.rate : Infinity;
-      const currRate = curr.rate || curr.estimated_delivery_days ? curr.rate : Infinity;
-      return (currRate < prevRate) ? curr : prev;
     });
 
-    return res.status(200).json({
-      available: true,
-      cost: cheapestCourier.rate || 0,
-      estimatedDays: cheapestCourier.estimated_delivery_days || 5,
-      courier: cheapestCourier.courier_name || 'Standard',
-      allCouriers: availableCouriers
+    rateRequest.on('error', (error) => {
+      console.error('Request error:', error);
+      res.status(500).json({ error: 'Failed to fetch shipping rates' });
     });
+
+    rateRequest.end();
   } catch (error) {
-    console.error('Shiprocket rates error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message 
-    });
+    console.error('Server error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 

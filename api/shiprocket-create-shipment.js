@@ -1,14 +1,50 @@
-// Shiprocket Create Shipment API
-// This function creates a shipment order in Shiprocket
+const https = require('https');
+
+const getToken = () => {
+  return new Promise((resolve, reject) => {
+    const email = process.env.SHIPROCKET_EMAIL;
+    const password = process.env.SHIPROCKET_PASSWORD;
+
+    const authData = JSON.stringify({ email, password });
+
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/auth/login',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(authData),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.token) resolve(response.token);
+          else reject(new Error('No token received'));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(authData);
+    req.end();
+  });
+};
 
 module.exports = async (req, res) => {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   if (req.method !== 'POST') {
@@ -16,144 +52,97 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const {
-      orderId,
-      customerName,
-      customerPhone,
-      customerEmail,
-      shippingAddress,
-      orderItems,
-      paymentMethod,
-      orderAmount
-    } = req.body;
+    const { order_id, items, shipping_address, payment_method } = req.body;
 
-    if (!orderId || !customerName || !customerPhone || !shippingAddress) {
+    if (!order_id || !items || !shipping_address) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Authenticate with Shiprocket
-    const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL;
-    const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
+    const token = await getToken();
 
-    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Shiprocket credentials' 
-      });
-    }
-
-    const authResponse = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: SHIPROCKET_EMAIL,
-        password: SHIPROCKET_PASSWORD,
-      }),
-    });
-
-    const authData = await authResponse.json();
-
-    if (!authResponse.ok) {
-      return res.status(authResponse.status).json({ 
-        error: 'Authentication failed',
-        details: authData 
-      });
-    }
-
-    const token = authData.token;
-
-    // Get warehouse/pickup address from environment variables
-    const pickupAddress = {
-      name: process.env.SHIPROCKET_PICKUP_NAME || 'Kurti Times',
-      phone: process.env.SHIPROCKET_PICKUP_PHONE || '9892794421',
-      address_line1: process.env.SHIPROCKET_PICKUP_ADDRESS_LINE1 || 'G-11-12, RAJHANS IMPERIA',
-      address_line2: process.env.SHIPROCKET_PICKUP_ADDRESS_LINE2 || 'RING ROAD',
-      city: process.env.SHIPROCKET_PICKUP_CITY || 'Surat',
-      state: process.env.SHIPROCKET_PICKUP_STATE || 'Gujarat',
-      pincode: process.env.SHIPROCKET_PICKUP_PINCODE || '395004',
-      country: 'India'
-    };
-
-    // Calculate total weight (assuming average 0.5kg per item)
-    const totalWeight = (orderItems.length * 0.5).toFixed(2);
-
-    // Prepare order data
-    const orderData = {
-      order_id: orderId,
+    const shipmentData = {
+      order_id: order_id,
       order_date: new Date().toISOString().split('T')[0],
-      pickup_location: 'Primary', // You may need to set this up in Shiprocket dashboard
-      billing_customer_name: customerName,
+      pickup_location: 'Primary',
+      billing_customer_name: shipping_address.name,
       billing_last_name: '',
-      billing_address: shippingAddress.addressLine1,
-      billing_address_2: shippingAddress.addressLine2 || '',
-      billing_city: shippingAddress.city,
-      billing_pincode: shippingAddress.pincode,
-      billing_state: shippingAddress.state,
-      billing_country: 'India',
-      billing_email: customerEmail || '',
-      billing_phone: customerPhone,
+      billing_address: shipping_address.address_line1,
+      billing_address_2: shipping_address.address_line2 || '',
+      billing_city: shipping_address.city,
+      billing_pincode: shipping_address.pincode,
+      billing_state: shipping_address.state,
+      billing_country: shipping_address.country || 'India',
+      billing_email: shipping_address.email || 'customer@example.com',
+      billing_phone: shipping_address.phone,
       shipping_is_billing: true,
-      shipping_customer_name: customerName,
-      shipping_last_name: '',
-      shipping_address: shippingAddress.addressLine1,
-      shipping_address_2: shippingAddress.addressLine2 || '',
-      shipping_city: shippingAddress.city,
-      shipping_pincode: shippingAddress.pincode,
-      shipping_state: shippingAddress.state,
-      shipping_country: 'India',
-      shipping_email: customerEmail || '',
-      shipping_phone: customerPhone,
-      order_items: orderItems.map((item, index) => ({
+      order_items: items.map(item => ({
         name: item.name,
-        sku: `KT-${item.id}`,
-        units: item.quantity,
-        selling_price: item.price,
-        discount: 0,
-        tax: 0,
-        hsn: 6109 // HSN code for garments
+        sku: item.sku,
+        units: item.units,
+        selling_price: item.selling_price,
       })),
-      payment_method: paymentMethod === 'COD' ? 'COD' : 'Prepaid',
-      sub_total: orderAmount,
-      length: 30,
-      breadth: 25,
+      payment_method: payment_method || 'prepaid',
+      sub_total: items.reduce((sum, item) => sum + (item.selling_price * item.units), 0),
+      length: 10,
+      breadth: 10,
       height: 5,
-      weight: totalWeight
+      weight: 0.5,
     };
 
-    // Create order in Shiprocket
-    const createOrderResponse = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
+    const postData = JSON.stringify(shipmentData);
+
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/orders/create/adhoc',
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(orderData),
-    });
+    };
 
-    const orderResult = await createOrderResponse.json();
+    const shipmentRequest = https.request(options, (shipmentRes) => {
+      let data = '';
 
-    if (!createOrderResponse.ok) {
-      console.error('Shiprocket create order error:', orderResult);
-      return res.status(createOrderResponse.status).json({ 
-        error: 'Failed to create shipment',
-        details: orderResult 
+      shipmentRes.on('data', (chunk) => {
+        data += chunk;
       });
-    }
 
-    return res.status(200).json({
-      success: true,
-      shipmentId: orderResult.order_id,
-      awbCode: orderResult.awb_code || null,
-      channelOrderId: orderResult.channel_order_id,
-      orderData: orderResult
+      shipmentRes.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          
+          if (shipmentRes.statusCode === 200 && response.shipment_id) {
+            res.status(200).json({
+              shipment_id: response.shipment_id,
+              status: response.status,
+              awb_code: response.awb_code,
+            });
+          } else {
+            console.error('Shiprocket error:', response);
+            res.status(shipmentRes.statusCode || 500).json({
+              error: response.message || 'Failed to create shipment',
+              details: response,
+            });
+          }
+        } catch (parseError) {
+          console.error('Parse error:', parseError);
+          res.status(500).json({ error: 'Invalid response from Shiprocket' });
+        }
+      });
     });
+
+    shipmentRequest.on('error', (error) => {
+      console.error('Request error:', error);
+      res.status(500).json({ error: 'Failed to create shipment' });
+    });
+
+    shipmentRequest.write(postData);
+    shipmentRequest.end();
   } catch (error) {
-    console.error('Shiprocket create shipment error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message 
-    });
+    console.error('Server error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 

@@ -1,14 +1,50 @@
-// Shiprocket Generate Label API
-// This function generates shipping label for a shipment
+const https = require('https');
+
+const getToken = () => {
+  return new Promise((resolve, reject) => {
+    const email = process.env.SHIPROCKET_EMAIL;
+    const password = process.env.SHIPROCKET_PASSWORD;
+
+    const authData = JSON.stringify({ email, password });
+
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/auth/login',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(authData),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.token) resolve(response.token);
+          else reject(new Error('No token received'));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(authData);
+    req.end();
+  });
+};
 
 module.exports = async (req, res) => {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   if (req.method !== 'POST') {
@@ -16,76 +52,64 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { shipmentId } = req.body;
+    const { shipment_id } = req.body;
 
-    if (!shipmentId) {
+    if (!shipment_id) {
       return res.status(400).json({ error: 'Shipment ID is required' });
     }
 
-    // Authenticate with Shiprocket
-    const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL;
-    const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
+    const token = await getToken();
 
-    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Shiprocket credentials' 
-      });
-    }
+    const labelData = JSON.stringify({
+      shipment_id: [shipment_id],
+    });
 
-    const authResponse = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
+    const options = {
+      hostname: 'apiv2.shiprocket.in',
+      path: '/v1/external/courier/generate/label',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: SHIPROCKET_EMAIL,
-        password: SHIPROCKET_PASSWORD,
-      }),
-    });
-
-    const authData = await authResponse.json();
-
-    if (!authResponse.ok) {
-      return res.status(authResponse.status).json({ 
-        error: 'Authentication failed',
-        details: authData 
-      });
-    }
-
-    const token = authData.token;
-
-    // Generate label
-    const labelResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, {
-      method: 'POST',
-      headers: {
+        'Content-Length': Buffer.byteLength(labelData),
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        shipment_id: [shipmentId]
-      }),
-    });
+    };
 
-    const labelData = await labelResponse.json();
+    const labelRequest = https.request(options, (labelRes) => {
+      let data = '';
 
-    if (!labelResponse.ok) {
-      return res.status(labelResponse.status).json({ 
-        error: 'Failed to generate label',
-        details: labelData 
+      labelRes.on('data', (chunk) => {
+        data += chunk;
       });
-    }
 
-    return res.status(200).json({
-      success: true,
-      labelUrl: labelData.label_url || null,
-      labelData: labelData
+      labelRes.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          
+          if (labelRes.statusCode === 200 && response.label_url) {
+            res.status(200).json({ label_url: response.label_url });
+          } else {
+            res.status(labelRes.statusCode || 500).json({
+              error: response.message || 'Failed to generate label',
+            });
+          }
+        } catch (parseError) {
+          console.error('Parse error:', parseError);
+          res.status(500).json({ error: 'Invalid response from Shiprocket' });
+        }
+      });
     });
+
+    labelRequest.on('error', (error) => {
+      console.error('Request error:', error);
+      res.status(500).json({ error: 'Failed to generate label' });
+    });
+
+    labelRequest.write(labelData);
+    labelRequest.end();
   } catch (error) {
-    console.error('Shiprocket generate label error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message 
-    });
+    console.error('Server error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 

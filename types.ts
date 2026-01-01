@@ -14,6 +14,10 @@ export interface Product {
   image: string;
   description: string;
   rating: number;
+  stockBySize?: { [size: string]: number };
+  details?: string;
+  washCare?: string;
+  images?: string[];
 }
 
 export interface CartItem extends Product {

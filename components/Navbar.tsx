@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { ShoppingBag, Menu, X, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   cartCount: number;
@@ -8,6 +8,9 @@ interface NavbarProps {
   toggleMobileMenu: () => void;
   onNavigate: (page: string) => void;
   activePage: string;
+  onLogoClick?: () => void;
+  onSignInClick?: () => void;
+  onBackToLanding?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -16,7 +19,10 @@ const Navbar: React.FC<NavbarProps> = ({
   isMobileMenuOpen, 
   toggleMobileMenu,
   onNavigate,
-  activePage
+  activePage,
+  onLogoClick,
+  onSignInClick,
+  onBackToLanding
 }) => {
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -37,7 +43,7 @@ const Navbar: React.FC<NavbarProps> = ({
             </button>
             <div 
               className="flex-shrink-0 flex items-center gap-3 cursor-pointer"
-              onClick={() => onNavigate('home')}
+              onClick={onLogoClick || (() => onNavigate('home'))}
             >
               {/* Logo Image */}
               <img 
@@ -64,6 +70,24 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
           
           <div className="flex items-center gap-4">
+            {onSignInClick && (
+              <button
+                onClick={onSignInClick}
+                className="text-sm font-medium text-brand-700 hover:text-brand-800 px-3 py-1.5 rounded-md hover:bg-brand-50 transition-colors"
+              >
+                Sign In / Sign Up
+              </button>
+            )}
+            {onBackToLanding && (
+              <button
+                onClick={onBackToLanding}
+                className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                title="Back to Landing Page"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            )}
             <button 
               onClick={onCartClick}
               className="relative p-2 text-brand-900 hover:text-brand-700 transition-colors"
