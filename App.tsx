@@ -537,6 +537,7 @@ const App: React.FC = () => {
                     key={product.id} 
                     product={product} 
                     onAddToCart={addToCart}
+                    onProductClick={setSelectedProduct}
                   />
                 ))}
               </div>
@@ -594,6 +595,14 @@ const App: React.FC = () => {
       >
         {renderInfoContent()}
       </InfoModal>
+
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={addToCart}
+        />
+      )}
 
       <div className="flex-grow">
         {renderContent()}
