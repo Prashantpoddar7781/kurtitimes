@@ -6,11 +6,15 @@ import { Plus } from 'lucide-react';
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
+  onProductClick?: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProductClick }) => {
   return (
-    <div className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-brand-50">
+    <div 
+      className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-brand-50 cursor-pointer"
+      onClick={() => onProductClick?.(product)}
+    >
       <div className="aspect-[3/4] w-full overflow-hidden bg-gray-200">
         <img
           src={product.image}
@@ -45,7 +49,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
             }}
             className="relative z-10 flex items-center gap-1 bg-brand-50 text-brand-700 px-3 py-2 rounded-full text-sm font-semibold hover:bg-brand-700 hover:text-white transition-colors duration-200 cursor-pointer active:bg-brand-800 active:text-white"
           >
-            <Plus className="h-4 w-4" /> Add
+            <Plus className="h-4 w-4" /> Quick Add
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
+import ProductDetail from './components/ProductDetail';
 import CartModal from './components/CartModal';
 import InfoModal from './components/InfoModal';
 import LandingPage from './components/LandingPage';
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeInfoPage, setActiveInfoPage] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Load products from localStorage on mount
   useEffect(() => {
@@ -157,17 +159,34 @@ const App: React.FC = () => {
   }, [products, selectedCategory, selectedPriceFilter]);
 
   // Cart actions
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, selectedSize?: string) => {
     setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
+      const existing = prev.find(item => {
+        const itemKey = (item as any).selectedSize 
+          ? `${item.id}-${(item as any).selectedSize}` 
+          : item.id.toString();
+        return itemKey === key;
+      });
+      
       if (existing) {
-        return prev.map(item => 
-          item.id === product.id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        );
+        return prev.map(item => {
+          const itemKey = (item as any).selectedSize 
+            ? `${item.id}-${(item as any).selectedSize}` 
+            : item.id.toString();
+          if (itemKey === key) {
+            return { ...item, quantity: item.quantity + 1 };
+          }
+          return item;
+        });
       }
-      return [...prev, { ...product, quantity: 1 }];
+      
+      const newItem: CartItem & { selectedSize?: string } = { 
+        ...product, 
+        quantity: 1,
+        selectedSize: selectedSize || 'M'
+      };
+      return [...prev, newItem];
     });
     setIsCartOpen(true);
   };
@@ -311,7 +330,11 @@ const App: React.FC = () => {
                         <Star className="h-3 w-3 fill-white" /> BESTSELLER
                       </div>
                     </div>
-                    <ProductCard product={product} onAddToCart={addToCart} />
+                    <ProductCard 
+                      product={product} 
+                      onAddToCart={addToCart}
+                      onProductClick={setSelectedProduct}
+                    />
                  </div>
                ))}
             </div>
