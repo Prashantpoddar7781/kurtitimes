@@ -714,8 +714,8 @@ const App: React.FC = () => {
         </div>
       )}
 
-
-      <footer className="bg-brand-950 text-brand-100 py-12 mt-auto">
+      {!selectedProduct && (
+        <footer className="bg-brand-950 text-brand-100 py-12 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20">
             <div>
@@ -740,7 +740,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
-        </>
       )}
     </div>
   );
