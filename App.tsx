@@ -248,10 +248,48 @@ const App: React.FC = () => {
         newCartItems.push(newItem);
       }
       
-      setCartItems(newCartItems);
+      // Update state safely using functional update to avoid stale closure
+      setCartItems(prev => {
+        const updated = [...prev];
+        const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
+        const existingIndex = updated.findIndex(item => {
+          const itemKey = (item as any).selectedSize 
+            ? `${item.id}-${(item as any).selectedSize}` 
+            : item.id.toString();
+          return itemKey === key;
+        });
+        
+        if (existingIndex >= 0) {
+          const currentQuantity = updated[existingIndex].quantity || 0;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            quantity: currentQuantity + quantity
+          };
+        } else {
+          const newItem: CartItem & { selectedSize?: string } = { 
+            id: product.id,
+            name: product.name || 'Product',
+            price: product.price || 0,
+            category: product.category,
+            image: product.image || '',
+            description: product.description || '',
+            rating: product.rating || 0,
+            quantity: quantity,
+            selectedSize: selectedSize || 'M',
+            ...(product.stockBySize && { stockBySize: product.stockBySize }),
+            ...(product.details && { details: product.details }),
+            ...(product.washCare && { washCare: product.washCare }),
+            ...(product.images && { images: product.images })
+          };
+          updated.push(newItem);
+        }
+        return updated;
+      });
       
-      // Open cart modal - it will start at cart step, user can proceed
-      setIsCartOpen(true);
+      // Open cart modal after state update completes
+      setTimeout(() => {
+        setIsCartOpen(true);
+      }, 100);
     } catch (error) {
       console.error('Error in buy now:', error);
       alert('Failed to proceed. Please try again.');

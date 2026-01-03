@@ -63,11 +63,16 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
     try {
       if (onBuyNow) {
         onBuyNow(product, selectedSize, quantity);
-        onClose();
+        // Close after state updates complete
+        setTimeout(() => {
+          onClose();
+        }, 100);
       } else {
         // Fallback: add to cart and open cart
         onAddToCart(product, selectedSize, quantity);
-        onClose();
+        setTimeout(() => {
+          onClose();
+        }, 100);
       }
     } catch (error) {
       console.error('Error in buy now:', error);
