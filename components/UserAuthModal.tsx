@@ -17,19 +17,41 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onAuth }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length === 10) {
-      // Store user data if sign up
-      if (isSignUp && name.trim()) {
-        const users = JSON.parse(localStorage.getItem('kurtitimes_users') || '[]');
+      const users = JSON.parse(localStorage.getItem('kurtitimes_users') || '[]');
+      
+      if (isSignUp) {
+        // Sign Up: Check if user already exists
+        const userExists = users.find((u: any) => u.phone === phone);
+        if (userExists) {
+          alert('This mobile number is already registered. Please sign in instead.');
+          setIsSignUp(false);
+          return;
+        }
+        if (!name.trim()) {
+          alert('Please enter your name to sign up.');
+          return;
+        }
+        // Register new user
+        users.push({ phone, name: name.trim(), createdAt: new Date().toISOString() });
+        localStorage.setItem('kurtitimes_users', JSON.stringify(users));
+        onAuth(phone);
+        setPhone('');
+        setName('');
+        onClose();
+      } else {
+        // Sign In: Check if user exists
         const userExists = users.find((u: any) => u.phone === phone);
         if (!userExists) {
-          users.push({ phone, name: name.trim(), createdAt: new Date().toISOString() });
-          localStorage.setItem('kurtitimes_users', JSON.stringify(users));
+          alert('This mobile number is not registered. Please sign up first.');
+          setIsSignUp(true);
+          return;
         }
+        // Sign in existing user
+        onAuth(phone);
+        setPhone('');
+        setName('');
+        onClose();
       }
-      onAuth(phone);
-      setPhone('');
-      setName('');
-      onClose();
     }
   };
 
