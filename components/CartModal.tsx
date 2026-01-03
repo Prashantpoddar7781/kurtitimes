@@ -118,28 +118,54 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         email || `${phone}@kurtitimes.com`
       );
 
+      if (!orderResponse || !orderResponse.payment_session_id) {
+        throw new Error('Invalid response from payment gateway');
+      }
+
       setOrderId(orderResponse.order_id);
       setOrderToken(orderResponse.order_token);
       setPaymentSessionId(orderResponse.payment_session_id);
 
       // Load Cashfree Checkout
-      const script = document.createElement('script');
-      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-      script.onload = () => {
-        if (window.Cashfree && orderResponse.payment_session_id) {
-          const cashfree = new window.Cashfree();
-          cashfree.checkout({
-            paymentSessionId: orderResponse.payment_session_id,
-            redirectTarget: '_self',
-          });
-        }
-      };
-      document.body.appendChild(script);
-
-      setStep('processing');
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+        script.onerror = () => {
+          setError('Failed to load payment gateway. Please refresh and try again.');
+          setLoading(false);
+          setStep('payment');
+        };
+        script.onload = () => {
+          try {
+            if (window.Cashfree && orderResponse.payment_session_id) {
+              const cashfree = new window.Cashfree();
+              cashfree.checkout({
+                paymentSessionId: orderResponse.payment_session_id,
+                redirectTarget: '_self',
+              });
+              setStep('processing');
+            } else {
+              throw new Error('Payment gateway not initialized');
+            }
+          } catch (checkoutErr: any) {
+            console.error('Checkout error:', checkoutErr);
+            setError(checkoutErr.message || 'Failed to initialize payment. Please try again.');
+            setLoading(false);
+            setStep('payment');
+          }
+        };
+        document.body.appendChild(script);
+      } catch (scriptErr: any) {
+        console.error('Script loading error:', scriptErr);
+        setError('Failed to load payment gateway. Please refresh and try again.');
+        setLoading(false);
+        setStep('payment');
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to initiate payment');
+      console.error('Payment initiation error:', err);
+      setError(err.message || 'Failed to initiate payment. Please try again.');
       setLoading(false);
+      setStep('payment');
     }
   };
 
@@ -196,22 +222,20 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         'prepaid'
       );
 
-      // Generate label and request pickup
+      // Generate label and request pickup (non-blocking)
       if (shipment.shipment_id) {
-        try {
-          await generateLabel(shipment.shipment_id);
-        } catch (err) {
+        // Don't await these - they're non-critical
+        generateLabel(shipment.shipment_id).catch(err => {
           console.error('Label generation error:', err);
-        }
-        try {
-          await requestPickup(shipment.shipment_id);
-        } catch (err) {
+        });
+        requestPickup(shipment.shipment_id).catch(err => {
           console.error('Pickup request error:', err);
-        }
+        });
       }
     } catch (err) {
       console.error('Shipment creation error:', err);
-      throw err; // Re-throw to handle in caller
+      // Don't throw - allow success page to show even if shipment fails
+      // Admin can create shipment manually if needed
     }
   };
 

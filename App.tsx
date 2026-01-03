@@ -320,6 +320,93 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    // Category view - show products for selected category
+    if (currentView === 'category' && selectedCategory !== Category.ALL) {
+      const categoryProducts = filteredProducts.filter(p => p.category === selectedCategory);
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="mb-6 md:mb-8">
+            <button
+              onClick={() => {
+                setCurrentView('home');
+                setSelectedCategory(Category.ALL);
+              }}
+              className="text-brand-600 hover:text-brand-800 font-medium mb-4 flex items-center gap-2 text-sm md:text-base"
+            >
+              ← Back to Home
+            </button>
+            <h2 className="text-2xl md:text-3xl font-serif font-bold text-brand-900 mb-2">
+              {selectedCategory}
+            </h2>
+            <p className="text-gray-600 text-sm md:text-base">{categoryProducts.length} items</p>
+          </div>
+
+          {/* Filters */}
+          <div className="mb-6 md:mb-10 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-brand-50">
+            <div className="flex items-center gap-2 mb-4 md:mb-6 text-brand-900 border-b border-brand-100 pb-2">
+              <Filter className="h-4 w-4 md:h-5 md:w-5" />
+              <h3 className="text-base md:text-lg font-bold font-serif">Refine Collection</h3>
+            </div>
+
+            <div className="space-y-4 md:space-y-6">
+              <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 md:mb-3">Price Range</h4>
+                <div className="relative">
+                  <select
+                    value={selectedPriceFilter.label}
+                    onChange={(e) => {
+                      const selected = priceFilters.find(p => p.label === e.target.value);
+                      if (selected) setSelectedPriceFilter(selected);
+                    }}
+                    className="w-full appearance-none bg-white border border-gray-200 text-gray-700 py-2 md:py-3 px-3 md:px-4 pr-8 md:pr-10 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all cursor-pointer hover:border-brand-300 text-sm md:text-base"
+                  >
+                    {priceFilters.map((range) => (
+                      <option key={range.label} value={range.label}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 md:px-3 text-brand-700">
+                    <ChevronDown className="h-3 w-3 md:h-4 md:w-4" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 xl:gap-8">
+            {categoryProducts.map((product) => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onAddToCart={addToCart}
+                onProductClick={setSelectedProduct}
+              />
+            ))}
+          </div>
+
+          {categoryProducts.length === 0 && (
+            <div className="text-center py-12 md:py-20 bg-white rounded-xl border border-dashed border-gray-300">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-gray-100 mb-4">
+                <Filter className="h-5 w-5 md:h-6 md:w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base md:text-lg font-medium text-gray-900">No products found</h3>
+              <p className="mt-1 text-sm md:text-base text-gray-500">Try adjusting your price filter.</p>
+              <button 
+                onClick={() => {
+                  setSelectedPriceFilter(priceFilters[0]);
+                }}
+                className="mt-4 text-brand-600 font-medium hover:text-brand-800 text-sm md:text-base"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     switch (currentView) {
       case 'bestsellers':
         return (
@@ -489,21 +576,21 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <main id="shop-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              {/* Category Tiles Section */}
-              <div className="mb-12">
-                <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-900 mb-8 text-center">
+            <main id="shop-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+              {/* Category Tiles Section - Only show on home page */}
+              <div className="mb-8 md:mb-12">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-brand-900 mb-6 md:mb-8 text-center">
                   Shop by Category
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
                   {/* Kurti Set with Video */}
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.KURTI_SET);
-                      const el = document.getElementById('products-grid');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      setCurrentView('category');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
                     <video
                       autoPlay
@@ -514,9 +601,9 @@ const App: React.FC = () => {
                     >
                       <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
                     </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
-                      <h3 className="text-white font-serif font-bold text-xl mb-1">Kurti Set</h3>
-                      <p className="text-white/90 text-sm">Timeless Traditions</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
+                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Kurti Set</h3>
+                      <p className="text-white/90 text-xs md:text-sm">Timeless Traditions</p>
                     </div>
                   </div>
 
@@ -524,19 +611,19 @@ const App: React.FC = () => {
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.INDO_WESTERN);
-                      const el = document.getElementById('products-grid');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      setCurrentView('category');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
                     <img
                       src="/designs/D5/IMG-20251221-WA0014.jpg"
                       alt="Indo Western"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
-                      <h3 className="text-white font-serif font-bold text-xl mb-1">Indo Western</h3>
-                      <p className="text-white/90 text-sm">Modern Fusion</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
+                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Indo Western</h3>
+                      <p className="text-white/90 text-xs md:text-sm">Modern Fusion</p>
                     </div>
                   </div>
 
@@ -544,19 +631,19 @@ const App: React.FC = () => {
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.COORD_SETS);
-                      const el = document.getElementById('products-grid');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      setCurrentView('category');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
                     <img
                       src="/designs/D8/IMG-20251221-WA0007.jpg"
                       alt="Co-ord Sets"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
-                      <h3 className="text-white font-serif font-bold text-xl mb-1">Co-ord Sets</h3>
-                      <p className="text-white/90 text-sm">Chic & Matching</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
+                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Co-ord Sets</h3>
+                      <p className="text-white/90 text-xs md:text-sm">Chic & Matching</p>
                     </div>
                   </div>
 
@@ -564,106 +651,23 @@ const App: React.FC = () => {
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.TUNICS);
-                      const el = document.getElementById('products-grid');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      setCurrentView('category');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
                     <img
                       src="/designs/D11/IMG-20251221-WA0062.jpg"
                       alt="Tunics"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
-                      <h3 className="text-white font-serif font-bold text-xl mb-1">Tunics</h3>
-                      <p className="text-white/90 text-sm">Everyday Comfort</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
+                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Tunics</h3>
+                      <p className="text-white/90 text-xs md:text-sm">Everyday Comfort</p>
                     </div>
                   </div>
                 </div>
               </div>
-
-              <div id="products-grid" className="mb-10 bg-white p-6 rounded-xl shadow-sm border border-brand-50">
-                <div className="flex items-center gap-2 mb-6 text-brand-900 border-b border-brand-100 pb-2">
-                  <Filter className="h-5 w-5" />
-                  <h2 className="text-lg font-bold font-serif">Refine Collection</h2>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Categories</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.values(Category).map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`px-4 py-2 rounded-full text-sm transition-all duration-200 
-                            ${selectedCategory === cat 
-                              ? 'bg-brand-700 text-white shadow-md font-medium' 
-                              : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
-                            }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="w-full sm:w-72">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                      <Tag className="h-3 w-3" /> Price Range
-                    </h3>
-                    <div className="relative">
-                      <select
-                        value={selectedPriceFilter.label}
-                        onChange={(e) => {
-                          const selected = priceFilters.find(p => p.label === e.target.value);
-                          if (selected) setSelectedPriceFilter(selected);
-                        }}
-                        className="w-full appearance-none bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-10 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all cursor-pointer hover:border-brand-300"
-                      >
-                        {priceFilters.map((range) => (
-                          <option key={range.label} value={range.label}>
-                            {range.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-brand-700">
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 xl:gap-8">
-                {filteredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={addToCart}
-                    onProductClick={setSelectedProduct}
-                  />
-                ))}
-              </div>
-
-              {filteredProducts.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-4">
-                    <Filter className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900">No products found</h3>
-                  <p className="mt-1 text-gray-500">Try adjusting your category or price filters.</p>
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory(Category.ALL);
-                      setSelectedPriceFilter(priceFilters[0]);
-                    }}
-                    className="mt-4 text-brand-600 font-medium hover:text-brand-800"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
-              )}
             </main>
           </>
         );
