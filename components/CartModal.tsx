@@ -71,8 +71,21 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
   if (!isOpen) return null;
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal + shippingCost;
+  // Safely calculate totals
+  let subtotal = 0;
+  let total = 0;
+  try {
+    subtotal = cartItems.reduce((sum, item) => {
+      const price = item.price || 0;
+      const quantity = item.quantity || 0;
+      return sum + (price * quantity);
+    }, 0);
+    total = subtotal + shippingCost;
+  } catch (error) {
+    console.error('Cart calculation error:', error);
+    subtotal = 0;
+    total = 0;
+  }
 
   const handleShippingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -712,9 +712,12 @@ const App: React.FC = () => {
         />
       )}
 
-      <div className="flex-grow">
-        {renderContent()}
-      </div>
+      {!selectedProduct && (
+        <div className="flex-grow">
+          {renderContent()}
+        </div>
+      )}
+
 
       <footer className="bg-brand-950 text-brand-100 py-12 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
