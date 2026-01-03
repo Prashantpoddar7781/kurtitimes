@@ -159,7 +159,7 @@ const App: React.FC = () => {
   }, [products, selectedCategory, selectedPriceFilter]);
 
   // Cart actions
-  const addToCart = (product: Product, selectedSize?: string) => {
+  const addToCart = (product: Product, selectedSize?: string, quantity: number = 1) => {
     try {
       // If no size selected and product has sizes, open product detail instead
       if (!selectedSize && product.stockBySize && Object.keys(product.stockBySize).length > 0) {
@@ -179,23 +179,25 @@ const App: React.FC = () => {
       if (existingIndex >= 0) {
         newCartItems[existingIndex] = {
           ...newCartItems[existingIndex],
-          quantity: (newCartItems[existingIndex].quantity || 0) + 1
+          quantity: (newCartItems[existingIndex].quantity || 0) + quantity
         };
       } else {
         const newItem: CartItem & { selectedSize?: string } = { 
           ...product, 
-          quantity: 1,
+          quantity: quantity,
           selectedSize: selectedSize || 'M'
         };
         newCartItems.push(newItem);
       }
       
       setCartItems(newCartItems);
-      setIsCartOpen(true);
+      // Don't close product detail immediately - let user see the cart
+      setTimeout(() => {
+        setIsCartOpen(true);
+      }, 100);
     } catch (error) {
       console.error('Error adding to cart:', error);
-      // If error, open product detail modal
-      setSelectedProduct(product);
+      alert('Failed to add to cart. Please try again.');
     }
   };
 

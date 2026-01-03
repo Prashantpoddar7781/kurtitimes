@@ -7,7 +7,7 @@ import SizeChartModal from './SizeChartModal';
 interface ProductDetailProps {
   product: Product;
   onClose: () => void;
-  onAddToCart: (product: Product, selectedSize: string) => void;
+  onAddToCart: (product: Product, selectedSize: string, quantity: number) => void;
 }
 
 const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddToCart }) => {
@@ -37,8 +37,11 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
       return;
     }
     try {
-      onAddToCart(product, selectedSize);
-      onClose();
+      onAddToCart(product, selectedSize, quantity);
+      // Don't close immediately - let user see success
+      setTimeout(() => {
+        onClose();
+      }, 300);
     } catch (error) {
       console.error('Error adding to cart:', error);
       alert('Failed to add to cart. Please try again.');
@@ -126,7 +129,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
             </div>
 
             {/* Product Info */}
-            <div className="space-y-6 md:space-y-8">
+            <div className="space-y-4 md:space-y-6">
               <div>
                 <p className="text-sm md:text-base text-brand-600 font-medium mb-2">{product.category}</p>
                 <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-gray-900 mb-4">{product.name}</h1>
@@ -141,7 +144,13 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                     </div>
                   )}
                 </div>
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed">{product.description}</p>
+                {/* Description - Always visible */}
+                {product.description && (
+                  <div className="mb-4">
+                    <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-2">Description</h3>
+                    <p className="text-sm md:text-base text-gray-700 leading-relaxed">{product.description}</p>
+                  </div>
+                )}
               </div>
 
               {/* Product Details */}
@@ -230,10 +239,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                 </div>
               )}
 
-              {/* Wash Care */}
+              {/* Wash Care - Always visible if exists */}
               {product.washCare && (
-                <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-3">Wash Care Instructions</h3>
+                <div className="border-t border-gray-200 pt-4 md:pt-6">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">Wash Care Instructions</h3>
                   <p className="text-sm md:text-base text-gray-600 whitespace-pre-line leading-relaxed">{product.washCare}</p>
                 </div>
               )}
