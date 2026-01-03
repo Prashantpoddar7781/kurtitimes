@@ -89,6 +89,7 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeInfoPage, setActiveInfoPage] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const isProcessingCart = useRef(false);
 
   // Load products from localStorage on mount
   useEffect(() => {
@@ -206,53 +207,25 @@ const App: React.FC = () => {
 
   // Buy Now - Add to cart and proceed to checkout
   const buyNow = (product: Product, selectedSize?: string, quantity: number = 1) => {
+    // Prevent multiple simultaneous calls
+    if (isProcessingCart.current) {
+      return;
+    }
+    
     try {
+      isProcessingCart.current = true;
+      
       // If no size selected and product has sizes, open product detail instead
       if (!selectedSize && product.stockBySize && Object.keys(product.stockBySize).length > 0) {
         setSelectedProduct(product);
+        isProcessingCart.current = false;
         return;
       }
 
-      // Add to cart first
-      const newCartItems = [...cartItems];
-      const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
-      const existingIndex = newCartItems.findIndex(item => {
-        const itemKey = (item as any).selectedSize 
-          ? `${item.id}-${(item as any).selectedSize}` 
-          : item.id.toString();
-        return itemKey === key;
-      });
-      
-      if (existingIndex >= 0) {
-        const currentQuantity = newCartItems[existingIndex].quantity || 0;
-        newCartItems[existingIndex] = {
-          ...newCartItems[existingIndex],
-          quantity: currentQuantity + quantity
-        };
-      } else {
-        const newItem: CartItem & { selectedSize?: string } = { 
-          id: product.id,
-          name: product.name || 'Product',
-          price: product.price || 0,
-          category: product.category,
-          image: product.image || '',
-          description: product.description || '',
-          rating: product.rating || 0,
-          quantity: quantity,
-          selectedSize: selectedSize || 'M',
-          ...(product.stockBySize && { stockBySize: product.stockBySize }),
-          ...(product.details && { details: product.details }),
-          ...(product.washCare && { washCare: product.washCare }),
-          ...(product.images && { images: product.images })
-        };
-        newCartItems.push(newItem);
-      }
-      
-      // Update state safely using functional update to avoid stale closure
+      // Update state using functional update
       setCartItems(prev => {
-        const updated = [...prev];
         const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
-        const existingIndex = updated.findIndex(item => {
+        const existingIndex = prev.findIndex(item => {
           const itemKey = (item as any).selectedSize 
             ? `${item.id}-${(item as any).selectedSize}` 
             : item.id.toString();
@@ -260,11 +233,11 @@ const App: React.FC = () => {
         });
         
         if (existingIndex >= 0) {
-          const currentQuantity = updated[existingIndex].quantity || 0;
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            quantity: currentQuantity + quantity
-          };
+          return prev.map((item, index) => 
+            index === existingIndex
+              ? { ...item, quantity: (item.quantity || 0) + quantity }
+              : item
+          );
         } else {
           const newItem: CartItem & { selectedSize?: string } = { 
             id: product.id,
@@ -281,16 +254,17 @@ const App: React.FC = () => {
             ...(product.washCare && { washCare: product.washCare }),
             ...(product.images && { images: product.images })
           };
-          updated.push(newItem);
+          return [...prev, newItem];
         }
-        return updated;
       });
       
-      // Open cart modal after state update completes
-      setTimeout(() => {
+      // Open cart modal after state update
+      requestAnimationFrame(() => {
         setIsCartOpen(true);
-      }, 100);
+        isProcessingCart.current = false;
+      });
     } catch (error) {
+      isProcessingCart.current = false;
       console.error('Error in buy now:', error);
       alert('Failed to proceed. Please try again.');
     }

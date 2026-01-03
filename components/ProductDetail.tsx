@@ -60,19 +60,19 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
       alert(`Only ${selectedSizeStock} items available in ${selectedSize}`);
       return;
     }
+    
     try {
       if (onBuyNow) {
         onBuyNow(product, selectedSize, quantity);
-        // Close after state updates complete
+        // Close product detail after cart opens
         setTimeout(() => {
           onClose();
-        }, 100);
+        }, 150);
       } else {
-        // Fallback: add to cart and open cart
         onAddToCart(product, selectedSize, quantity);
         setTimeout(() => {
           onClose();
-        }, 100);
+        }, 500);
       }
     } catch (error) {
       console.error('Error in buy now:', error);
