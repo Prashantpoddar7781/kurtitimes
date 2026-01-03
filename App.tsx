@@ -167,34 +167,30 @@ const App: React.FC = () => {
         return;
       }
 
-      setCartItems(prev => {
-        const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
-        const existing = prev.find(item => {
-          const itemKey = (item as any).selectedSize 
-            ? `${item.id}-${(item as any).selectedSize}` 
-            : item.id.toString();
-          return itemKey === key;
-        });
-        
-        if (existing) {
-          return prev.map(item => {
-            const itemKey = (item as any).selectedSize 
-              ? `${item.id}-${(item as any).selectedSize}` 
-              : item.id.toString();
-            if (itemKey === key) {
-              return { ...item, quantity: item.quantity + 1 };
-            }
-            return item;
-          });
-        }
-        
+      const newCartItems = [...cartItems];
+      const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
+      const existingIndex = newCartItems.findIndex(item => {
+        const itemKey = (item as any).selectedSize 
+          ? `${item.id}-${(item as any).selectedSize}` 
+          : item.id.toString();
+        return itemKey === key;
+      });
+      
+      if (existingIndex >= 0) {
+        newCartItems[existingIndex] = {
+          ...newCartItems[existingIndex],
+          quantity: (newCartItems[existingIndex].quantity || 0) + 1
+        };
+      } else {
         const newItem: CartItem & { selectedSize?: string } = { 
           ...product, 
           quantity: 1,
           selectedSize: selectedSize || 'M'
         };
-        return [...prev, newItem];
-      });
+        newCartItems.push(newItem);
+      }
+      
+      setCartItems(newCartItems);
       setIsCartOpen(true);
     } catch (error) {
       console.error('Error adding to cart:', error);
