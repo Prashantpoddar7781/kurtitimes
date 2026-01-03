@@ -740,6 +740,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 };
