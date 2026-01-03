@@ -8,9 +8,10 @@ interface ProductDetailProps {
   product: Product;
   onClose: () => void;
   onAddToCart: (product: Product, selectedSize: string, quantity: number) => void;
+  onBuyNow?: (product: Product, selectedSize: string, quantity: number) => void;
 }
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddToCart }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddToCart, onBuyNow }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
@@ -38,13 +39,39 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
     }
     try {
       onAddToCart(product, selectedSize, quantity);
-      // Don't close immediately - let user see success
+      // Show success message
+      alert('Item added to cart successfully!');
+      // Close after a short delay
       setTimeout(() => {
         onClose();
-      }, 300);
+      }, 500);
     } catch (error) {
       console.error('Error adding to cart:', error);
       alert('Failed to add to cart. Please try again.');
+    }
+  };
+
+  const handleBuyNow = () => {
+    if (!selectedSize) {
+      alert('Please select a size');
+      return;
+    }
+    if (selectedSizeStock < quantity) {
+      alert(`Only ${selectedSizeStock} items available in ${selectedSize}`);
+      return;
+    }
+    try {
+      if (onBuyNow) {
+        onBuyNow(product, selectedSize, quantity);
+        onClose();
+      } else {
+        // Fallback: add to cart and open cart
+        onAddToCart(product, selectedSize, quantity);
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error in buy now:', error);
+      alert('Failed to proceed. Please try again.');
     }
   };
 
@@ -247,8 +274,15 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                 </div>
               )}
 
-              {/* Add to Cart Button */}
-              <div className="border-t border-gray-200 pt-6">
+              {/* Action Buttons */}
+              <div className="border-t border-gray-200 pt-6 space-y-3">
+                <button
+                  onClick={handleBuyNow}
+                  disabled={!selectedSize || availableSizes.length === 0}
+                  className="w-full bg-brand-900 text-white py-3 md:py-4 px-6 rounded-lg font-semibold hover:bg-brand-950 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-base md:text-lg shadow-lg"
+                >
+                  Buy Now
+                </button>
                 <button
                   onClick={handleAddToCart}
                   disabled={!selectedSize || availableSizes.length === 0}

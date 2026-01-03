@@ -204,6 +204,60 @@ const App: React.FC = () => {
     return result;
   }, [products, selectedCategory, selectedPriceFilter]);
 
+  // Buy Now - Add to cart and proceed to checkout
+  const buyNow = (product: Product, selectedSize?: string, quantity: number = 1) => {
+    try {
+      // If no size selected and product has sizes, open product detail instead
+      if (!selectedSize && product.stockBySize && Object.keys(product.stockBySize).length > 0) {
+        setSelectedProduct(product);
+        return;
+      }
+
+      // Add to cart first
+      const newCartItems = [...cartItems];
+      const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
+      const existingIndex = newCartItems.findIndex(item => {
+        const itemKey = (item as any).selectedSize 
+          ? `${item.id}-${(item as any).selectedSize}` 
+          : item.id.toString();
+        return itemKey === key;
+      });
+      
+      if (existingIndex >= 0) {
+        const currentQuantity = newCartItems[existingIndex].quantity || 0;
+        newCartItems[existingIndex] = {
+          ...newCartItems[existingIndex],
+          quantity: currentQuantity + quantity
+        };
+      } else {
+        const newItem: CartItem & { selectedSize?: string } = { 
+          id: product.id,
+          name: product.name || 'Product',
+          price: product.price || 0,
+          category: product.category,
+          image: product.image || '',
+          description: product.description || '',
+          rating: product.rating || 0,
+          quantity: quantity,
+          selectedSize: selectedSize || 'M',
+          ...(product.stockBySize && { stockBySize: product.stockBySize }),
+          ...(product.details && { details: product.details }),
+          ...(product.washCare && { washCare: product.washCare }),
+          ...(product.images && { images: product.images })
+        };
+        newCartItems.push(newItem);
+      }
+      
+      setCartItems(newCartItems);
+      
+      // Open cart modal - it will start at cart step, user can proceed
+      setIsCartOpen(true);
+    } catch (error) {
+      console.error('Error in buy now:', error);
+      alert('Failed to proceed. Please try again.');
+    }
+  };
+
   // Cart actions
   const addToCart = (product: Product, selectedSize?: string, quantity: number = 1) => {
     try {
@@ -774,6 +828,7 @@ const App: React.FC = () => {
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={addToCart}
+          onBuyNow={buyNow}
         />
       )}
 
