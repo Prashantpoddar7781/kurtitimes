@@ -71,11 +71,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogoClick, onSignInClick })
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-brand-600 to-brand-700 rounded-full opacity-0 group-hover:opacity-100 transition-opacity blur-xl"></div>
           </button>
-
-          {/* Footer text */}
-          <p className="mt-8 text-sm text-gray-500 animate-in fade-in duration-700 delay-500">
-            Click the logo 3 times for admin access
-          </p>
         </div>
       </div>
     </div>
