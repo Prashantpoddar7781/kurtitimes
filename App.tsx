@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
@@ -14,6 +14,52 @@ import { Filter, Phone, Mail, Tag, ChevronDown, MapPin, Send, Star, MessageCircl
 
 const ADMIN_USER_ID = '7624029175';
 const ADMIN_PASSWORD = '7624029175';
+
+// Rotating Image Tile Component for moving effect
+const RotatingImageTile: React.FC<{
+  images: string[];
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}> = ({ images, title, subtitle, onClick }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (images.length > 1) {
+      intervalRef.current = window.setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+      }, 3000); // Change image every 3 seconds
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [images.length]);
+
+  return (
+    <div
+      onClick={onClick}
+      className="group relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
+    >
+      {images.map((img, index) => (
+        <img
+          key={index}
+          src={img}
+          alt={`${title} ${index + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+            index === currentIndex ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4 md:p-6">
+        <h3 className="text-white font-serif font-bold text-xl md:text-3xl mb-1">{title}</h3>
+        <p className="text-white/90 text-sm md:text-base">{subtitle}</p>
+      </div>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -597,12 +643,12 @@ const App: React.FC = () => {
             </div>
 
             <main id="shop-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-              {/* Category Tiles Section - Only show on home page */}
+              {/* Category Tiles Section - Only show on home page - Vertical Layout */}
               <div className="mb-8 md:mb-12">
                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-brand-900 mb-6 md:mb-8 text-center">
                   Shop by Category
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+                <div className="flex flex-col gap-4 md:gap-6">
                   {/* Kurti Set with Video */}
                   <div
                     onClick={() => {
@@ -610,7 +656,7 @@ const App: React.FC = () => {
                       setCurrentView('category');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
+                    className="group relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
                   >
                     <video
                       autoPlay
@@ -621,83 +667,62 @@ const App: React.FC = () => {
                     >
                       <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
                     </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
-                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Kurti Set</h3>
-                      <p className="text-white/90 text-xs md:text-sm">Timeless Traditions</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4 md:p-6">
+                      <h3 className="text-white font-serif font-bold text-xl md:text-3xl mb-1">Kurti Set</h3>
+                      <p className="text-white/90 text-sm md:text-base">Timeless Traditions</p>
                     </div>
                   </div>
 
-                  {/* Indo Western with Video */}
-                  <div
+                  {/* Indo Western with D2 Images - Rotating */}
+                  <RotatingImageTile
+                    images={[
+                      '/designs/D2/IMG-20251221-WA0003.jpg',
+                      '/designs/D2/IMG-20251221-WA0016.jpg',
+                      '/designs/D2/IMG-20251221-WA0017.jpg',
+                      '/designs/D2/IMG-20251221-WA0027.jpg'
+                    ]}
+                    title="Indo Western"
+                    subtitle="Modern Fusion"
                     onClick={() => {
                       setSelectedCategory(Category.INDO_WESTERN);
                       setCurrentView('category');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
-                  >
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    >
-                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
-                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Indo Western</h3>
-                      <p className="text-white/90 text-xs md:text-sm">Modern Fusion</p>
-                    </div>
-                  </div>
+                  />
 
-                  {/* Co-ord Sets with Video */}
-                  <div
+                  {/* Co-ord Sets with D3 Images - Rotating */}
+                  <RotatingImageTile
+                    images={[
+                      '/designs/D3/IMG-20251221-WA0001.jpg',
+                      '/designs/D3/IMG-20251221-WA0004.jpg',
+                      '/designs/D3/IMG-20251221-WA0012.jpg',
+                      '/designs/D3/IMG-20251221-WA0036.jpg'
+                    ]}
+                    title="Co-ord Sets"
+                    subtitle="Chic & Matching"
                     onClick={() => {
                       setSelectedCategory(Category.COORD_SETS);
                       setCurrentView('category');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
-                  >
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    >
-                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
-                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Co-ord Sets</h3>
-                      <p className="text-white/90 text-xs md:text-sm">Chic & Matching</p>
-                    </div>
-                  </div>
+                  />
 
-                  {/* Tunics with Video */}
-                  <div
+                  {/* Tunics with D4 Images - Rotating */}
+                  <RotatingImageTile
+                    images={[
+                      '/designs/D4/IMG-20251221-WA0022.jpg',
+                      '/designs/D4/IMG-20251221-WA0030.jpg',
+                      '/designs/D4/IMG-20251221-WA0032.jpg',
+                      '/designs/D4/IMG-20251221-WA0038.jpg'
+                    ]}
+                    title="Tunics"
+                    subtitle="Everyday Comfort"
                     onClick={() => {
                       setSelectedCategory(Category.TUNICS);
                       setCurrentView('category');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
-                  >
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    >
-                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
-                      <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Tunics</h3>
-                      <p className="text-white/90 text-xs md:text-sm">Everyday Comfort</p>
-                    </div>
-                  </div>
+                  />
                 </div>
               </div>
             </main>
