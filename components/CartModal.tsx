@@ -151,11 +151,22 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           const verified = await verifyPayment(orderId, orderToken);
           if (verified) {
             // Create shipment
-            await handleShipmentCreation();
+            try {
+              await handleShipmentCreation();
+            } catch (shipErr) {
+              console.error('Shipment creation error:', shipErr);
+            }
             setStep('success');
+          } else {
+            setError('Payment verification failed. Please contact support.');
+            setStep('cart');
+            setLoading(false);
           }
         } catch (err) {
           console.error('Payment verification failed:', err);
+          setError('Payment verification failed. Please contact support.');
+          setStep('cart');
+          setLoading(false);
         }
       };
       
@@ -166,7 +177,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
   const handleShipmentCreation = async () => {
     try {
-      const items = cartItems.map((item, index) => ({
+      const items = cartItems.map((item) => ({
         name: item.name,
         sku: `SKU-${item.id}`,
         units: item.quantity,
@@ -189,15 +200,18 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       if (shipment.shipment_id) {
         try {
           await generateLabel(shipment.shipment_id);
+        } catch (err) {
+          console.error('Label generation error:', err);
+        }
+        try {
           await requestPickup(shipment.shipment_id);
         } catch (err) {
-          console.error('Label/pickup error:', err);
-          // Non-critical, continue
+          console.error('Pickup request error:', err);
         }
       }
     } catch (err) {
       console.error('Shipment creation error:', err);
-      // Don't block success page
+      throw err; // Re-throw to handle in caller
     }
   };
 

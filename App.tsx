@@ -160,35 +160,47 @@ const App: React.FC = () => {
 
   // Cart actions
   const addToCart = (product: Product, selectedSize?: string) => {
-    setCartItems(prev => {
-      const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
-      const existing = prev.find(item => {
-        const itemKey = (item as any).selectedSize 
-          ? `${item.id}-${(item as any).selectedSize}` 
-          : item.id.toString();
-        return itemKey === key;
-      });
-      
-      if (existing) {
-        return prev.map(item => {
+    try {
+      // If no size selected and product has sizes, open product detail instead
+      if (!selectedSize && product.stockBySize && Object.keys(product.stockBySize).length > 0) {
+        setSelectedProduct(product);
+        return;
+      }
+
+      setCartItems(prev => {
+        const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
+        const existing = prev.find(item => {
           const itemKey = (item as any).selectedSize 
             ? `${item.id}-${(item as any).selectedSize}` 
             : item.id.toString();
-          if (itemKey === key) {
-            return { ...item, quantity: item.quantity + 1 };
-          }
-          return item;
+          return itemKey === key;
         });
-      }
-      
-      const newItem: CartItem & { selectedSize?: string } = { 
-        ...product, 
-        quantity: 1,
-        selectedSize: selectedSize || 'M'
-      };
-      return [...prev, newItem];
-    });
-    setIsCartOpen(true);
+        
+        if (existing) {
+          return prev.map(item => {
+            const itemKey = (item as any).selectedSize 
+              ? `${item.id}-${(item as any).selectedSize}` 
+              : item.id.toString();
+            if (itemKey === key) {
+              return { ...item, quantity: item.quantity + 1 };
+            }
+            return item;
+          });
+        }
+        
+        const newItem: CartItem & { selectedSize?: string } = { 
+          ...product, 
+          quantity: 1,
+          selectedSize: selectedSize || 'M'
+        };
+        return [...prev, newItem];
+      });
+      setIsCartOpen(true);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      // If error, open product detail modal
+      setSelectedProduct(product);
+    }
   };
 
   const updateQuantity = (id: number, delta: number) => {
@@ -478,7 +490,99 @@ const App: React.FC = () => {
             </div>
 
             <main id="shop-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              <div className="mb-10 bg-white p-6 rounded-xl shadow-sm border border-brand-50">
+              {/* Category Tiles Section */}
+              <div className="mb-12">
+                <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-900 mb-8 text-center">
+                  Shop by Category
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                  {/* Kurti Set with Video */}
+                  <div
+                    onClick={() => {
+                      setSelectedCategory(Category.KURTI_SET);
+                      const el = document.getElementById('products-grid');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
+                    </video>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
+                      <h3 className="text-white font-serif font-bold text-xl mb-1">Kurti Set</h3>
+                      <p className="text-white/90 text-sm">Timeless Traditions</p>
+                    </div>
+                  </div>
+
+                  {/* Indo Western */}
+                  <div
+                    onClick={() => {
+                      setSelectedCategory(Category.INDO_WESTERN);
+                      const el = document.getElementById('products-grid');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <img
+                      src="/designs/D5/IMG-20251221-WA0014.jpg"
+                      alt="Indo Western"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
+                      <h3 className="text-white font-serif font-bold text-xl mb-1">Indo Western</h3>
+                      <p className="text-white/90 text-sm">Modern Fusion</p>
+                    </div>
+                  </div>
+
+                  {/* Co-ord Sets */}
+                  <div
+                    onClick={() => {
+                      setSelectedCategory(Category.COORD_SETS);
+                      const el = document.getElementById('products-grid');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <img
+                      src="/designs/D8/IMG-20251221-WA0007.jpg"
+                      alt="Co-ord Sets"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
+                      <h3 className="text-white font-serif font-bold text-xl mb-1">Co-ord Sets</h3>
+                      <p className="text-white/90 text-sm">Chic & Matching</p>
+                    </div>
+                  </div>
+
+                  {/* Tunics */}
+                  <div
+                    onClick={() => {
+                      setSelectedCategory(Category.TUNICS);
+                      const el = document.getElementById('products-grid');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <img
+                      src="/designs/D11/IMG-20251221-WA0062.jpg"
+                      alt="Tunics"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4">
+                      <h3 className="text-white font-serif font-bold text-xl mb-1">Tunics</h3>
+                      <p className="text-white/90 text-sm">Everyday Comfort</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="products-grid" className="mb-10 bg-white p-6 rounded-xl shadow-sm border border-brand-50">
                 <div className="flex items-center gap-2 mb-6 text-brand-900 border-b border-brand-100 pb-2">
                   <Filter className="h-5 w-5" />
                   <h2 className="text-lg font-bold font-serif">Refine Collection</h2>
