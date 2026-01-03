@@ -1,7 +1,6 @@
 import React from 'react';
 import { Product } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
-import { Plus } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -38,19 +37,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProdu
         
         <p className="mt-2 text-sm text-gray-500 line-clamp-2">{product.description}</p>
         
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4">
           <span className="text-xl font-bold text-brand-900">
             {CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}
           </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(product);
-            }}
-            className="relative z-10 flex items-center gap-1 bg-brand-50 text-brand-700 px-3 py-2 rounded-full text-sm font-semibold hover:bg-brand-700 hover:text-white transition-colors duration-200 cursor-pointer active:bg-brand-800 active:text-white"
-          >
-            <Plus className="h-4 w-4" /> Quick Add
-          </button>
         </div>
       </div>
     </div>

@@ -167,6 +167,7 @@ const App: React.FC = () => {
         return;
       }
 
+      // Safely create new cart items
       const newCartItems = [...cartItems];
       const key = selectedSize ? `${product.id}-${selectedSize}` : product.id.toString();
       const existingIndex = newCartItems.findIndex(item => {
@@ -177,27 +178,48 @@ const App: React.FC = () => {
       });
       
       if (existingIndex >= 0) {
+        const currentQuantity = newCartItems[existingIndex].quantity || 0;
         newCartItems[existingIndex] = {
           ...newCartItems[existingIndex],
-          quantity: (newCartItems[existingIndex].quantity || 0) + quantity
+          quantity: currentQuantity + quantity
         };
       } else {
+        // Ensure product has all required fields
         const newItem: CartItem & { selectedSize?: string } = { 
-          ...product, 
+          id: product.id,
+          name: product.name || 'Product',
+          price: product.price || 0,
+          category: product.category,
+          image: product.image || '',
+          description: product.description || '',
+          rating: product.rating || 0,
           quantity: quantity,
-          selectedSize: selectedSize || 'M'
+          selectedSize: selectedSize || 'M',
+          ...(product.stockBySize && { stockBySize: product.stockBySize }),
+          ...(product.details && { details: product.details }),
+          ...(product.washCare && { washCare: product.washCare }),
+          ...(product.images && { images: product.images })
         };
         newCartItems.push(newItem);
       }
       
+      // Update state safely
       setCartItems(newCartItems);
-      // Don't close product detail immediately - let user see the cart
-      setTimeout(() => {
-        setIsCartOpen(true);
-      }, 100);
+      
+      // Open cart modal after state update
+      requestAnimationFrame(() => {
+        try {
+          setIsCartOpen(true);
+        } catch (err) {
+          console.error('Error opening cart:', err);
+        }
+      });
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('Failed to add to cart. Please try again.');
+      // Don't show alert if it's just a state update issue
+      if (error instanceof Error && !error.message.includes('state')) {
+        alert('Failed to add to cart. Please try again.');
+      }
     }
   };
 
@@ -605,7 +627,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Indo Western */}
+                  {/* Indo Western with Video */}
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.INDO_WESTERN);
@@ -614,18 +636,22 @@ const App: React.FC = () => {
                     }}
                     className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
-                    <img
-                      src="/designs/D5/IMG-20251221-WA0014.jpg"
-                      alt="Indo Western"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
+                    </video>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
                       <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Indo Western</h3>
                       <p className="text-white/90 text-xs md:text-sm">Modern Fusion</p>
                     </div>
                   </div>
 
-                  {/* Co-ord Sets */}
+                  {/* Co-ord Sets with Video */}
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.COORD_SETS);
@@ -634,18 +660,22 @@ const App: React.FC = () => {
                     }}
                     className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
-                    <img
-                      src="/designs/D8/IMG-20251221-WA0007.jpg"
-                      alt="Co-ord Sets"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
+                    </video>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
                       <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Co-ord Sets</h3>
                       <p className="text-white/90 text-xs md:text-sm">Chic & Matching</p>
                     </div>
                   </div>
 
-                  {/* Tunics */}
+                  {/* Tunics with Video */}
                   <div
                     onClick={() => {
                       setSelectedCategory(Category.TUNICS);
@@ -654,11 +684,15 @@ const App: React.FC = () => {
                     }}
                     className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
                   >
-                    <img
-                      src="/designs/D11/IMG-20251221-WA0062.jpg"
-                      alt="Tunics"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
+                    </video>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
                       <h3 className="text-white font-serif font-bold text-lg md:text-xl mb-1">Tunics</h3>
                       <p className="text-white/90 text-xs md:text-sm">Everyday Comfort</p>

@@ -71,11 +71,16 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
   if (!isOpen) return null;
 
+  // Validate cartItems to prevent errors
+  const validCartItems = Array.isArray(cartItems) 
+    ? cartItems.filter(item => item && item.id && typeof item.price === 'number')
+    : [];
+
   // Safely calculate totals
   let subtotal = 0;
   let total = 0;
   try {
-    subtotal = cartItems.reduce((sum, item) => {
+    subtotal = validCartItems.reduce((sum, item) => {
       const price = item.price || 0;
       const quantity = item.quantity || 0;
       return sum + (price * quantity);
@@ -216,11 +221,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
   const handleShipmentCreation = async () => {
     try {
-      const items = cartItems.map((item) => ({
-        name: item.name,
+      const items = validCartItems.map((item) => ({
+        name: item.name || 'Product',
         sku: `SKU-${item.id}`,
-        units: item.quantity,
-        selling_price: item.price,
+        units: item.quantity || 1,
+        selling_price: item.price || 0,
       }));
 
       const shipment = await createShipment(
@@ -287,7 +292,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
             {step === 'cart' && (
               <>
-                {cartItems.length === 0 ? (
+                {validCartItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <div className="bg-brand-50 p-4 rounded-full mb-4">
                       <X className="h-8 w-8 text-brand-300" />
@@ -300,7 +305,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                   </div>
                 ) : (
                   <ul className="divide-y divide-gray-200">
-                    {cartItems.map((item) => (
+                    {validCartItems.map((item) => (
                       <li key={item.id} className="py-6 flex">
                         <div className="flex-shrink-0 w-24 h-32 border border-gray-200 rounded-md overflow-hidden">
                           <img
@@ -560,7 +565,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
             )}
           </div>
 
-          {step === 'cart' && cartItems.length > 0 && (
+          {step === 'cart' && validCartItems.length > 0 && (
             <div className="border-t border-gray-200 px-4 py-6 sm:px-6 bg-gray-50">
               <div className="flex justify-between text-base font-medium text-gray-900 mb-4">
                 <p>Subtotal</p>
