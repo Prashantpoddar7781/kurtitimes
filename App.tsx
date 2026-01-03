@@ -690,30 +690,22 @@ const App: React.FC = () => {
                     }}
                   />
 
-                  {/* Co-ord Sets with Video - Different Design */}
-                  <div
+                  {/* Co-ord Sets with D7 Images - Same styling as Kurti Set */}
+                  <RotatingImageTile
+                    images={[
+                      '/designs/D7/IMG-20251221-WA0023.jpg',
+                      '/designs/D7/IMG-20251221-WA0034.jpg',
+                      '/designs/D7/IMG-20251221-WA0049.jpg',
+                      '/designs/D7/IMG-20251221-WA0056.jpg'
+                    ]}
+                    title="Co-ord Sets"
+                    subtitle="Chic & Matching"
                     onClick={() => {
                       setSelectedCategory(Category.COORD_SETS);
                       setCurrentView('category');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
-                  >
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700"
-                    >
-                      <source src="/designs/VID-20251221-WA0088.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/60 via-pink-800/40 to-transparent"></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-4 md:p-6">
-                      <h3 className="text-white font-serif font-bold text-xl md:text-3xl mb-1 drop-shadow-lg">Co-ord Sets</h3>
-                      <p className="text-white/95 text-sm md:text-base font-medium">Chic & Matching</p>
-                    </div>
-                  </div>
+                  />
 
                   {/* Tunics with D4 Images - Rotating */}
                   <RotatingImageTile
