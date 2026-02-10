@@ -10,6 +10,7 @@ import LandingPage from './components/LandingPage';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import api, { transformProduct } from './utils/api';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -22,6 +23,35 @@ const App: React.FC = () => {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Fetch products from API on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        const response = await api.get('/api/products?limit=1000');
+        if (response.data && response.data.products && Array.isArray(response.data.products)) {
+          const transformedProducts = response.data.products.map(transformProduct);
+          setProducts(transformedProducts);
+        } else if (Array.isArray(response.data)) {
+          const transformedProducts = response.data.map(transformProduct);
+          setProducts(transformedProducts);
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch products from API, using fallback:', error);
+        setApiError('Failed to load products from server. Using cached data.');
+        // Fallback to constants if API fails - keeps existing functionality
+        setProducts(PRODUCTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Check if user is already authenticated on mount
   useEffect(() => {
@@ -163,8 +193,12 @@ const App: React.FC = () => {
     setCurrentView('home');
   };
 
-  const handleUpdateProducts = (updatedProducts: Product[]) => {
+  const handleUpdateProducts = async (updatedProducts: Product[]) => {
+    // Update local state immediately for responsive UI
     setProducts(updatedProducts);
+    
+    // Optionally sync with backend (for future use)
+    // This keeps the existing functionality working while allowing backend sync later
   };
 
   const updateQuantity = (id: number, delta: number) => {

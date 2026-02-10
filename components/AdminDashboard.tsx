@@ -3,6 +3,7 @@ import { X, Edit2, Trash2, Plus, Save, XCircle } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
+import api, { transformProduct, transformProductForBackend } from '../utils/api';
 
 // Stock Display Component
 const StockDisplay: React.FC<{ product: Product }> = ({ product }) => {
@@ -79,44 +80,108 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editedProducts, setEditedProducts] = useState<Product[]>(products);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Update local products when props change
+  React.useEffect(() => {
+    setEditedProducts(products);
+  }, [products]);
 
   if (!isOpen) return null;
 
   const handleEdit = (product: Product) => {
     setEditingProduct({ ...product });
+    setError(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingProduct) return;
 
-    const updated = editedProducts.map(p => 
-      p.id === editingProduct.id ? editingProduct : p
-    );
-    setEditedProducts(updated);
-    onUpdateProducts(updated);
-    setEditingProduct(null);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const productData = transformProductForBackend(editingProduct);
+      const response = await api.put(`/api/products/${editingProduct.id}`, productData);
+      
+      const updatedProduct = transformProduct(response.data);
+      const updated = editedProducts.map(p => 
+        p.id === editingProduct.id ? updatedProduct : p
+      );
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+      setEditingProduct(null);
+    } catch (err: any) {
+      console.error('Failed to update product:', err);
+      setError(err.response?.data?.error || 'Failed to update product. Please try again.');
+      // Still update locally for better UX
+      const updated = editedProducts.map(p => 
+        p.id === editingProduct.id ? editingProduct : p
+      );
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setEditingProduct(null);
+    setError(null);
   };
 
-  const handleDelete = (productId: number) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+  const handleDelete = async (productId: number) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await api.delete(`/api/products/${productId}`);
+      
       const updated = editedProducts.filter(p => p.id !== productId);
       setEditedProducts(updated);
       onUpdateProducts(updated);
+    } catch (err: any) {
+      console.error('Failed to delete product:', err);
+      setError(err.response?.data?.error || 'Failed to delete product. Please try again.');
+      // Still update locally for better UX
+      const updated = editedProducts.filter(p => p.id !== productId);
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleAddNew = () => {
     setIsAddProductOpen(true);
+    setError(null);
   };
 
-  const handleSaveNewProduct = (newProduct: Product) => {
-    const updated = [...editedProducts, newProduct];
-    setEditedProducts(updated);
-    onUpdateProducts(updated);
+  const handleSaveNewProduct = async (newProduct: Product) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const productData = transformProductForBackend(newProduct);
+      const response = await api.post('/api/products', productData);
+      
+      const savedProduct = transformProduct(response.data);
+      const updated = [...editedProducts, savedProduct];
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+    } catch (err: any) {
+      console.error('Failed to create product:', err);
+      setError(err.response?.data?.error || 'Failed to create product. Please try again.');
+      // Still add locally for better UX
+      const updated = [...editedProducts, newProduct];
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUpdateField = (field: keyof Product, value: any) => {
@@ -143,6 +208,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+            {loading && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">Processing...</p>
+              </div>
+            )}
             <div className="mb-6 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Products Management</h2>
               <button
