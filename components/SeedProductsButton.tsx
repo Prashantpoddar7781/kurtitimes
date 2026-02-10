@@ -27,15 +27,26 @@ const SeedProductsButton: React.FC<SeedProductsButtonProps> = ({ onProductsAdded
       const productData = transformProductForBackend(product);
 
       try {
-        await api.post('/api/products', productData);
+        const response = await api.post('/api/products', productData);
+        console.log(`✅ Successfully added: ${product.name}`, response.data);
         successCount++;
       } catch (error: any) {
+        // Log detailed error information
+        console.error(`❌ Failed to add ${product.name}:`, {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+          productData: productData
+        });
+        
         // If product already exists (409 conflict), count as success
-        if (error.response?.status === 409 || error.response?.status === 400) {
+        if (error.response?.status === 409) {
+          console.log(`   (Product already exists)`);
           successCount++;
+          errorCount--;
         } else {
           errorCount++;
-          console.error(`Failed to add ${product.name}:`, error);
         }
       }
 
@@ -64,21 +75,26 @@ const SeedProductsButton: React.FC<SeedProductsButtonProps> = ({ onProductsAdded
       
       {status && (
         <div className={`mt-2 p-3 rounded-lg ${
-          status.errors === 0 ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
+          status.errors === 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
         }`}>
           <div className="flex items-center gap-2">
             {status.errors === 0 ? (
               <CheckCircle className="h-5 w-5 text-green-600" />
             ) : (
-              <XCircle className="h-5 w-5 text-yellow-600" />
+              <XCircle className="h-5 w-5 text-red-600" />
             )}
             <div className="text-sm">
               <p className="font-medium">
-                {status.errors === 0 ? 'All products added successfully!' : 'Seeding completed with some errors'}
+                {status.errors === 0 ? 'All products added successfully!' : 'Seeding completed with errors'}
               </p>
               <p className="text-gray-600">
                 ✅ Success: {status.success} | ❌ Errors: {status.errors}
               </p>
+              {status.errors > 0 && (
+                <p className="text-xs text-red-600 mt-1">
+                  Check browser console (F12) for detailed error messages
+                </p>
+              )}
             </div>
           </div>
         </div>
