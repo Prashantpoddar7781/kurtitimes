@@ -26,19 +26,30 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Fetch products from API on mount
+  // Fetch products from API on mount and when view changes
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setApiError(null);
+        console.log('Fetching products from API...');
         const response = await api.get('/api/products?limit=1000');
+        console.log('API response:', response.data);
+        
+        let productsArray: any[] = [];
         if (response.data && response.data.products && Array.isArray(response.data.products)) {
-          const transformedProducts = response.data.products.map(transformProduct);
-          setProducts(transformedProducts);
+          productsArray = response.data.products;
         } else if (Array.isArray(response.data)) {
-          const transformedProducts = response.data.map(transformProduct);
+          productsArray = response.data;
+        }
+        
+        if (productsArray.length > 0) {
+          const transformedProducts = productsArray.map(transformProduct);
+          console.log(`Loaded ${transformedProducts.length} products from API`);
           setProducts(transformedProducts);
+        } else {
+          console.warn('No products found in API response, using fallback');
+          setProducts(PRODUCTS);
         }
       } catch (error: any) {
         console.error('Failed to fetch products from API, using fallback:', error);
@@ -278,11 +289,21 @@ const App: React.FC = () => {
             <p className="text-gray-500 text-sm mt-1">{filteredProducts.length} items found</p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-gray-100">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading products...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No products found in this category.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-gray-100">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
+              ))}
+            </div>
+          )}
         </div>
       );
     }
@@ -298,11 +319,21 @@ const App: React.FC = () => {
                </div>
                <h2 className="text-3xl font-serif font-bold text-brand-900">Best Sellers</h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-0 border-t border-l border-gray-100">
-               {bestSellers.map((product) => (
-                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
-               ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Loading products...</p>
+              </div>
+            ) : bestSellers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No products available.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-0 border-t border-l border-gray-100">
+                {bestSellers.map((product) => (
+                  <ProductCard key={product.id} product={product} onAddToCart={addToCart} onProductClick={handleProductClick} />
+                ))}
+              </div>
+            )}
           </div>
         );
         

@@ -88,6 +88,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
     setEditedProducts(products);
   }, [products]);
 
+  // Refresh products from API when dashboard opens
+  React.useEffect(() => {
+    if (isOpen) {
+      const refreshProducts = async () => {
+        try {
+          const response = await api.get('/api/products?limit=1000');
+          let productsArray: any[] = [];
+          if (response.data && response.data.products && Array.isArray(response.data.products)) {
+            productsArray = response.data.products;
+          } else if (Array.isArray(response.data)) {
+            productsArray = response.data;
+          }
+          if (productsArray.length > 0) {
+            const transformedProducts = productsArray.map(transformProduct);
+            setEditedProducts(transformedProducts);
+            onUpdateProducts(transformedProducts);
+          }
+        } catch (error) {
+          console.error('Failed to refresh products:', error);
+        }
+      };
+      refreshProducts();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleEdit = (product: Product) => {
@@ -189,6 +214,61 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
     setEditingProduct({ ...editingProduct, [field]: value });
   };
 
+  // Auto-allocate stock for existing products (5 to first size, 1 each to rest)
+  const handleAutoAllocateStock = async (product: Product) => {
+    if (!confirm(`Allocate stock for "${product.name}"? (5 to ${product.availableSizes?.[0] || 'S'}, 1 each to others)`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const totalStock = product.stock || 10;
+      const availableSizes = product.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+      const stockBySize: { [size: string]: number } = {};
+      
+      // Allocate 5 to first size (S)
+      if (availableSizes.length > 0) {
+        stockBySize[availableSizes[0]] = Math.min(5, totalStock);
+      }
+      
+      // Allocate 1 each to remaining sizes
+      const allocatedSoFar = Object.values(stockBySize).reduce((sum, s) => sum + s, 0);
+      const remaining = totalStock - allocatedSoFar;
+      const remainingSizes = availableSizes.slice(1);
+      
+      remainingSizes.forEach((size, index) => {
+        if (remaining > index) {
+          stockBySize[size] = 1;
+        } else {
+          stockBySize[size] = 0;
+        }
+      });
+      
+      // Distribute any remaining stock to first size
+      const allocatedTotal = Object.values(stockBySize).reduce((sum, s) => sum + s, 0);
+      const finalRemaining = totalStock - allocatedTotal;
+      if (finalRemaining > 0 && availableSizes.length > 0) {
+        stockBySize[availableSizes[0]] = (stockBySize[availableSizes[0]] || 0) + finalRemaining;
+      }
+      
+      const updatedProduct = { ...product, stockBySize };
+      const productData = transformProductForBackend(updatedProduct);
+      const response = await api.put(`/api/products/${product.id}`, productData);
+      
+      const savedProduct = transformProduct(response.data);
+      const updated = editedProducts.map(p => p.id === product.id ? savedProduct : p);
+      setEditedProducts(updated);
+      onUpdateProducts(updated);
+    } catch (err: any) {
+      console.error('Failed to allocate stock:', err);
+      setError(err.response?.data?.error || 'Failed to allocate stock. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] overflow-hidden bg-gray-50">
       <div className="h-full flex flex-col">
@@ -284,16 +364,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                           <span className="text-sm text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {editingProduct?.id === product.id ? (
-                          <StockBySizeEditor
-                            product={editingProduct}
-                            onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
-                          />
-                        ) : (
-                          <StockDisplay product={product} />
-                        )}
-                      </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         {editingProduct?.id === product.id ? (
+                           <StockBySizeEditor
+                             product={editingProduct}
+                             onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
+                           />
+                         ) : (
+                           <div className="flex flex-col items-end gap-1">
+                             <StockDisplay product={product} />
+                             {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
+                               <button
+                                 onClick={() => handleAutoAllocateStock(product)}
+                                 className="text-xs text-brand-600 hover:text-brand-800 underline"
+                                 title="Auto-allocate: 5 to S, 1 each to others"
+                               >
+                                 Auto-allocate
+                               </button>
+                             )}
+                           </div>
+                         )}
+                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingProduct?.id === product.id ? (
                           <select
@@ -425,19 +516,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                       )}
                     </div>
                     
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs text-gray-500">Stock:</span>
-                      {editingProduct?.id === product.id ? (
-                        <div className="flex-1 ml-4">
-                          <StockBySizeEditor
-                            product={editingProduct}
-                            onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
-                          />
-                        </div>
-                      ) : (
-                        <StockDisplay product={product} />
-                      )}
-                    </div>
+                     <div className="flex justify-between items-start">
+                       <span className="text-xs text-gray-500">Stock:</span>
+                       {editingProduct?.id === product.id ? (
+                         <div className="flex-1 ml-4">
+                           <StockBySizeEditor
+                             product={editingProduct}
+                             onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
+                           />
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-end gap-1">
+                           <StockDisplay product={product} />
+                           {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
+                             <button
+                               onClick={() => handleAutoAllocateStock(product)}
+                               className="text-xs text-brand-600 hover:text-brand-800 underline"
+                               title="Auto-allocate: 5 to S, 1 each to others"
+                             >
+                               Auto-allocate
+                             </button>
+                           )}
+                         </div>
+                       )}
+                     </div>
                     
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500">Category:</span>

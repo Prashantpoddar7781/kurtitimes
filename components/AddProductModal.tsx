@@ -27,6 +27,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const [washCare, setWashCare] = useState('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
   const [imageFiles, setImageFiles] = useState<ImageFile[]>([]);
   const [availableSizes, setAvailableSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
+  const [stockBySize, setStockBySize] = useState<{ [size: string]: number }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,9 +78,28 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const toggleSize = (size: string) => {
     if (availableSizes.includes(size)) {
       setAvailableSizes(availableSizes.filter(s => s !== size));
+      // Remove stock for deselected size
+      const updated = { ...stockBySize };
+      delete updated[size];
+      setStockBySize(updated);
     } else {
       setAvailableSizes([...availableSizes, size]);
+      // Initialize stock to 0 for newly selected size
+      setStockBySize({ ...stockBySize, [size]: 0 });
     }
+  };
+
+  const handleStockBySizeChange = (size: string, value: number) => {
+    const updated = { ...stockBySize, [size]: Math.max(0, value) };
+    setStockBySize(updated);
+    
+    // Auto-update total stock
+    const total = Object.values(updated).reduce((sum, qty) => sum + qty, 0);
+    setStock(total.toString());
+  };
+
+  const getTotalStockBySize = () => {
+    return Object.values(stockBySize).reduce((sum, qty) => sum + qty, 0);
   };
 
   const validate = (): boolean => {
@@ -108,6 +128,21 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       newErrors.sizes = 'At least one size must be selected';
     }
 
+    // Validate stock distribution
+    const totalStock = parseInt(stock) || 0;
+    const totalBySize = getTotalStockBySize();
+    if (totalStock > 0 && totalBySize !== totalStock) {
+      newErrors.stockDistribution = `Total quantity by size (${totalBySize}) must equal total stock (${totalStock})`;
+    }
+
+    // Ensure all selected sizes have stock values
+    if (totalStock > 0) {
+      const missingSizes = availableSizes.filter(size => !stockBySize.hasOwnProperty(size) || stockBySize[size] === undefined);
+      if (missingSizes.length > 0) {
+        newErrors.stockDistribution = 'Please enter quantity for all selected sizes';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -127,6 +162,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       name: name.trim(),
       price: parseFloat(price),
       stock: parseInt(stock) || 0,
+      stockBySize: stockBySize,
       category: category,
       image: imageUrls[0],
       images: imageUrls,
@@ -158,6 +194,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     setWashCare('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
     setImageFiles([]);
     setAvailableSizes(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
+    setStockBySize({});
     setErrors({});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -330,6 +367,41 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                 </div>
                 {errors.sizes && <p className="mt-1 text-sm text-red-600">{errors.sizes}</p>}
               </div>
+
+              {/* Stock Distribution by Size */}
+              {parseInt(stock) > 0 && availableSizes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantity per Size * (Total: {parseInt(stock) || 0})
+                  </label>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    {availableSizes.map(size => (
+                      <div key={size} className="flex flex-col">
+                        <label className="text-xs text-gray-500 mb-1">{size}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={stockBySize[size] || 0}
+                          onChange={(e) => handleStockBySizeChange(size, parseInt(e.target.value) || 0)}
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-brand-500 focus:border-brand-500"
+                          placeholder="0"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Total by size: <span className={`font-medium ${getTotalStockBySize() === parseInt(stock) ? 'text-green-600' : 'text-red-600'}`}>
+                        {getTotalStockBySize()}
+                      </span> / {parseInt(stock) || 0}
+                    </span>
+                    {getTotalStockBySize() !== parseInt(stock) && (
+                      <span className="text-xs text-red-600">Quantities must add up to total stock</span>
+                    )}
+                  </div>
+                  {errors.stockDistribution && <p className="mt-1 text-sm text-red-600">{errors.stockDistribution}</p>}
+                </div>
+              )}
 
               {/* Description */}
               <div>
