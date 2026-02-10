@@ -218,35 +218,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                 <p className="text-sm text-blue-800">Processing...</p>
               </div>
             )}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Products Management</h2>
-                <button
-                  onClick={handleAddNew}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-brand-700 text-white rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="h-5 w-5" />
-                  Add New Product
-                </button>
-              </div>
-              <SeedProductsButton onProductsAdded={async () => {
-                // Refresh products by fetching from API
-                try {
-                  const response = await api.get('/api/products?limit=1000');
-                  if (response.data && response.data.products && Array.isArray(response.data.products)) {
-                    const transformedProducts = response.data.products.map(transformProduct);
-                    setEditedProducts(transformedProducts);
-                    onUpdateProducts(transformedProducts);
-                  } else if (Array.isArray(response.data)) {
-                    const transformedProducts = response.data.map(transformProduct);
-                    setEditedProducts(transformedProducts);
-                    onUpdateProducts(transformedProducts);
-                  }
-                } catch (error) {
-                  console.error('Failed to refresh products:', error);
-                }
-              }} />
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Products Management</h2>
+              <button
+                onClick={handleAddNew}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-brand-700 text-white rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-5 w-5" />
+                Add New Product
+              </button>
             </div>
 
             <AddProductModal
