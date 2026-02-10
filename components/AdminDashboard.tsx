@@ -3,7 +3,6 @@ import { X, Edit2, Trash2, Plus, Save, XCircle } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
-import SeedProductsButton from './SeedProductsButton';
 import api, { transformProduct, transformProductForBackend } from '../utils/api';
 
 // Stock Display Component
