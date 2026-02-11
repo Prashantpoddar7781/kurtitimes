@@ -1,4 +1,5 @@
 // Vercel Serverless Function - Shiprocket Authentication
+// Supports both API Key (direct token) and Email/Password authentication
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,17 +14,29 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Check if API key is provided (new method)
+    const apiKey = process.env.SHIPROCKET_API_KEY;
+    
+    if (apiKey) {
+      // Use API key directly as token
+      return res.status(200).json({
+        token: apiKey,
+        expires_in: 86400 // API keys typically don't expire
+      });
+    }
+
+    // Fallback to email/password authentication (old method)
     const email = process.env.SHIPROCKET_EMAIL;
     const password = process.env.SHIPROCKET_PASSWORD;
 
     if (!email || !password) {
       return res.status(500).json({
         error: 'Shiprocket credentials not configured',
-        message: 'Please set SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD in Vercel Dashboard'
+        message: 'Please set either SHIPROCKET_API_KEY (recommended) or SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD in Vercel Dashboard'
       });
     }
 
-    // Authenticate with Shiprocket
+    // Authenticate with Shiprocket using email/password
     const response = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
       method: 'POST',
       headers: {
