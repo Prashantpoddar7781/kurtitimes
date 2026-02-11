@@ -106,7 +106,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
             const shipmentData = {
               order_id: `KT-${Date.now()}`,
               order_date: new Date().toISOString(),
-              pickup_location: 'Default', // Update this with your pickup location name from Shiprocket
+              pickup_location: 'warehouse', // Pickup location name from Shiprocket
               billing_customer_name: name.split(' ')[0] || name,
               billing_last_name: name.split(' ').slice(1).join(' ') || '',
               billing_address: addressLine1,
