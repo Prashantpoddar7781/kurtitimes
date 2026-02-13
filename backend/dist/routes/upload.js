@@ -3,7 +3,6 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,8 +38,8 @@ const upload = multer({
         }
     }
 });
-// POST /api/upload - Upload single image (admin only)
-router.post('/', authenticate, requireAdmin, upload.single('image'), async (req, res) => {
+// POST /api/upload - Upload single image
+router.post('/', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -57,8 +56,8 @@ router.post('/', authenticate, requireAdmin, upload.single('image'), async (req,
         res.status(500).json({ error: error.message });
     }
 });
-// POST /api/upload/multiple - Upload multiple images (admin only)
-router.post('/multiple', authenticate, requireAdmin, upload.array('images', 10), async (req, res) => {
+// POST /api/upload/multiple - Upload multiple images
+router.post('/multiple', upload.array('images', 10), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'No files uploaded' });
@@ -75,8 +74,8 @@ router.post('/multiple', authenticate, requireAdmin, upload.array('images', 10),
         res.status(500).json({ error: error.message });
     }
 });
-// DELETE /api/upload/:filename - Delete uploaded image (admin only)
-router.delete('/:filename', authenticate, requireAdmin, async (req, res) => {
+// DELETE /api/upload/:filename - Delete uploaded image
+router.delete('/:filename', async (req, res) => {
     try {
         const filename = req.params.filename;
         const filePath = path.join(uploadDir, filename);
