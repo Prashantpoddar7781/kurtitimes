@@ -24,13 +24,14 @@ api.interceptors.request.use((config) => {
 
 // Helper to transform backend product to frontend Product format
 export const transformProduct = (backendProduct: any) => {
+  const category = ENUM_TO_CATEGORY[backendProduct.category] || backendProduct.category;
   return {
     id: backendProduct.id,
     name: backendProduct.name,
     price: backendProduct.price,
     stock: backendProduct.stock || 0,
     stockBySize: backendProduct.stockBySize || {},
-    category: backendProduct.category,
+    category,
     image: backendProduct.image || backendProduct.images?.[0] || '',
     images: backendProduct.images || [backendProduct.image].filter(Boolean),
     description: backendProduct.description || '',
@@ -42,14 +43,25 @@ export const transformProduct = (backendProduct: any) => {
   };
 };
 
+// Map frontend category labels <-> Prisma enum values
+const CATEGORY_TO_ENUM: Record<string, string> = {
+  'All': 'ALL', 'Kurti Set': 'KURTI_SET', 'Indo Western': 'INDO_WESTERN',
+  'Co-ord Sets': 'COORD_SETS', 'Tunics': 'TUNICS',
+};
+const ENUM_TO_CATEGORY: Record<string, string> = {
+  'ALL': 'All', 'KURTI_SET': 'Kurti Set', 'INDO_WESTERN': 'Indo Western',
+  'COORD_SETS': 'Co-ord Sets', 'TUNICS': 'Tunics',
+};
+
 // Helper to transform frontend product to backend format
 export const transformProductForBackend = (product: any) => {
+  const category = CATEGORY_TO_ENUM[product.category] || product.category;
   return {
     name: product.name,
     price: product.price,
     stock: product.stock || 0,
     stockBySize: product.stockBySize || {},
-    category: product.category,
+    category,
     image: product.image,
     images: product.images || [product.image].filter(Boolean),
     description: product.description || '',
