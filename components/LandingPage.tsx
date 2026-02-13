@@ -4,7 +4,7 @@ import UserAuthModal from './UserAuthModal';
 
 interface LandingPageProps {
   onAuthenticated: () => void;
-  onAdminLogin: (userId: string, password: string) => boolean;
+  onAdminLogin: (userId: string, password: string) => Promise<boolean>;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onAuthenticated, onAdminLogin }) => {
@@ -25,11 +25,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuthenticated, onAdminLogin
     setTimeout(() => setLogoClickCount(0), 3000);
   };
 
-  const handleAdminLogin = (userId: string, password: string): boolean => {
-    const success = onAdminLogin(userId, password);
+  const handleAdminLogin = async (userId: string, password: string): Promise<boolean> => {
+    const success = await Promise.resolve(onAdminLogin(userId, password));
     if (success) {
       setIsAdminLoginOpen(false);
-      // Admin can access the app directly
       onAuthenticated();
     }
     return success;

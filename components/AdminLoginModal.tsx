@@ -4,32 +4,36 @@ import { X, Lock } from 'lucide-react';
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (userId: string, password: string) => boolean;
+  onLogin: (userId: string, password: string) => boolean | Promise<boolean>;
 }
 
 const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLogin }) => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (!userId || !password) {
-      setError('Please enter both User ID and Password');
+      setError('Please enter both Email and Password');
       return;
     }
-
-    const success = onLogin(userId, password);
-    if (success) {
-      setUserId('');
-      setPassword('');
-      onClose();
-    } else {
-      setError('Invalid User ID or Password');
+    setLoading(true);
+    try {
+      const success = await Promise.resolve(onLogin(userId, password));
+      if (success) {
+        setUserId('');
+        setPassword('');
+        onClose();
+      } else {
+        setError('Invalid Email or Password');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,15 +56,15 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLo
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="adminUserId" className="block text-sm font-medium text-gray-700 mb-1">
-                User ID
+                Email
               </label>
               <input
-                type="text"
+                type="email"
                 id="adminUserId"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                placeholder="Enter User ID"
+                placeholder="Admin email"
                 autoFocus
               />
             </div>
@@ -95,9 +99,10 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLo
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors"
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors disabled:opacity-50"
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </button>
             </div>
           </form>

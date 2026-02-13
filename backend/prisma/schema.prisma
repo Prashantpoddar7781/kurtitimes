@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  ALL
+  KURTI_SET
+  INDO_WESTERN
+  COORD_SETS
+  TUNICS
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  price       Float
+  category    Category
+  description String
+  images      String[]
+  rating      Float       @default(0)
+  stock       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  customerName      String
+  customerPhone     String
+  customerEmail     String?
+  shippingAddress   String?
+  total             Float
+  status            OrderStatus @default(PENDING)
+  paymentId         String?
+  paymentStatus     String?
+  cashfreeOrderId   String?
+  shiprocketOrderId String?
+  items             OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}

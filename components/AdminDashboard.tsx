@@ -186,10 +186,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   };
 
   const handleSaveNewProduct = async (newProduct: Product) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
       const productData = transformProductForBackend(newProduct);
       const response = await api.post('/api/products', productData);
       
@@ -200,10 +199,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
     } catch (err: any) {
       console.error('Failed to create product:', err);
       setError(err.response?.data?.error || 'Failed to create product. Please try again.');
-      // Still add locally for better UX
-      const updated = [...editedProducts, newProduct];
-      setEditedProducts(updated);
-      onUpdateProducts(updated);
+      throw err; // Let AddProductModal show error and keep form open
     } finally {
       setLoading(false);
     }

@@ -182,13 +182,18 @@ const App: React.FC = () => {
     setSelectedProduct(product);
   };
 
-  const handleAdminLogin = (userId: string, password: string): boolean => {
-    if (userId === '7624029175' && password === '7624029175') {
-      setIsAdminLoggedIn(true);
-      setIsAdminDashboardOpen(true);
-      setIsAuthenticated(true); // Admin can access the app
-      return true;
-    }
+  const handleAdminLogin = async (userId: string, password: string): Promise<boolean> => {
+    try {
+      const res = await api.post('/api/auth/login', { email: userId.trim(), password });
+      const token = res.data?.token;
+      if (token) {
+        localStorage.setItem('kurtiTimesAdminToken', token);
+        setIsAdminLoggedIn(true);
+        setIsAdminDashboardOpen(true);
+        setIsAuthenticated(true);
+        return true;
+      }
+    } catch (_) { /* invalid credentials */ }
     return false;
   };
 
@@ -198,6 +203,7 @@ const App: React.FC = () => {
 
   const handleSignOut = () => {
     localStorage.removeItem('kurtiTimesCurrentUser');
+    localStorage.removeItem('kurtiTimesAdminToken');
     setIsAuthenticated(false);
     setIsAdminLoggedIn(false);
     setIsAdminDashboardOpen(false);

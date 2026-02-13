@@ -9,6 +9,19 @@ const api = axios.create({
   }
 });
 
+// Add auth token to requests when admin is logged in
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('kurtiTimesAdminToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  // FormData needs browser-set Content-Type with boundary; remove JSON default
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  return config;
+});
+
 // Helper to transform backend product to frontend Product format
 export const transformProduct = (backendProduct: any) => {
   return {

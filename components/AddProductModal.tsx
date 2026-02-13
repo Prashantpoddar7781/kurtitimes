@@ -1,18 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
 import { Product, Category } from '../types';
+import api from '../utils/api';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (product: Product) => void;
+  onSave: (product: Product) => void | Promise<void>;
   nextId: number;
 }
 
 interface ImageFile {
   file: File;
   preview: string;
-  dataUrl: string;
 }
 
 const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId }) => {
@@ -29,9 +29,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const [availableSizes, setAvailableSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
   const [stockBySize, setStockBySize] = useState<{ [size: string]: number }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+  useEffect(() => {
+    if (isOpen) setSaveError(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -45,16 +51,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
       const file = files[i];
       if (file.type.startsWith('image/')) {
-        const dataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.readAsDataURL(file);
-        });
-
         newFiles.push({
           file,
           preview: URL.createObjectURL(file),
-          dataUrl: dataUrl as string,
         });
       }
     }
@@ -147,36 +146,56 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
 
     if (!validate()) {
       return;
     }
 
-    // Convert image files to data URLs for storage
-    const imageUrls = imageFiles.map(img => img.dataUrl);
+    try {
+      setIsSubmitting(true);
 
-    const newProduct: Product = {
-      id: nextId,
-      name: name.trim(),
-      price: parseFloat(price),
-      stock: parseInt(stock) || 0,
-      stockBySize: stockBySize,
-      category: category,
-      image: imageUrls[0],
-      images: imageUrls,
-      description: description.trim(),
-      rating: 0,
-      topLength: topLength.trim() || undefined,
-      pantLength: pantLength.trim() || undefined,
-      fabric: fabric.trim() || undefined,
-      availableSizes: availableSizes,
-    };
+      // Upload images first via FormData (avoids "entity too large" - no base64 in JSON)
+      let imageUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        const formData = new FormData();
+        imageFiles.forEach((img) => formData.append('images', img.file));
+        const uploadRes = await api.post('/api/upload/multiple', formData);
+        const files = uploadRes.data?.files || [];
+        imageUrls = files.map((f: { url: string }) => f.url).filter(Boolean);
+        if (imageUrls.length === 0) {
+          throw new Error('Image upload failed');
+        }
+      }
 
-    onSave(newProduct);
-    handleReset();
-    onClose();
+      const newProduct: Product = {
+        id: nextId,
+        name: name.trim(),
+        price: parseFloat(price),
+        stock: parseInt(stock) || 0,
+        stockBySize: stockBySize,
+        category: category,
+        image: imageUrls[0] || '',
+        images: imageUrls,
+        description: description.trim(),
+        rating: 0,
+        topLength: topLength.trim() || undefined,
+        pantLength: pantLength.trim() || undefined,
+        fabric: fabric.trim() || undefined,
+        availableSizes: availableSizes,
+      };
+
+      await onSave(newProduct);
+      handleReset();
+      onClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to save product. Please try again.';
+      setSaveError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -472,23 +491,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                 />
               </div>
 
+              {saveError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {saveError}
+                </div>
+              )}
+
               {/* Form Actions */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
+                    setSaveError(null);
                     handleReset();
                     onClose();
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors disabled:opacity-50"
                 >
-                  Add Product
+                  {isSubmitting ? 'Saving...' : 'Add Product'}
                 </button>
               </div>
             </form>
