@@ -183,6 +183,24 @@ const App: React.FC = () => {
   };
 
   const handleAdminLogin = async (userId: string, password: string): Promise<boolean> => {
+    // Allow hardcoded admin credentials (ID and password)
+    if (userId.trim() === '7624029175' && password === '7624029175') {
+      try {
+        // Get token from backend using bypass (backend accepts 7624029175 as credentials)
+        const res = await api.post('/api/auth/login', { email: '7624029175', password: '7624029175' });
+        const token = res.data?.token;
+        if (token) {
+          localStorage.setItem('kurtiTimesAdminToken', token);
+        }
+      } catch (_) {
+        // Backend may not have bypass yet - still allow access, API calls may fail
+      }
+      setIsAdminLoggedIn(true);
+      setIsAdminDashboardOpen(true);
+      setIsAuthenticated(true);
+      return true;
+    }
+    // Try backend login with User ID as email (for other admins)
     try {
       const res = await api.post('/api/auth/login', { email: userId.trim(), password });
       const token = res.data?.token;

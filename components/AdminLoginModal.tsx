@@ -19,7 +19,7 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLo
     e.preventDefault();
     setError('');
     if (!userId || !password) {
-      setError('Please enter both Email and Password');
+      setError('Please enter both User ID and Password');
       return;
     }
     setLoading(true);
@@ -30,7 +30,7 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLo
         setPassword('');
         onClose();
       } else {
-        setError('Invalid Email or Password');
+        setError('Invalid User ID or Password');
       }
     } finally {
       setLoading(false);
@@ -56,15 +56,15 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onLo
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="adminUserId" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                User ID
               </label>
               <input
-                type="email"
+                type="text"
                 id="adminUserId"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
-                placeholder="Admin email"
+                placeholder="Enter User ID"
                 autoFocus
               />
             </div>
