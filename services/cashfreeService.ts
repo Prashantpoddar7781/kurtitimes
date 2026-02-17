@@ -20,20 +20,15 @@ export interface PaymentOptions {
 
 export const loadCashfreeScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    if (window.cashfree) {
+    if (typeof (window as any).Cashfree === 'function') {
       resolve(true);
       return;
     }
-
     const script = document.createElement('script');
     script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    script.crossOrigin = 'anonymous';
     script.onload = () => {
-      // Initialize Cashfree
-      if (window.cashfree) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
+      resolve(typeof (window as any).Cashfree === 'function');
     };
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
@@ -83,14 +78,17 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
       throw new Error('Failed to get payment session ID');
     }
 
-    // Load Cashfree script
+    // Load Cashfree script (exposes window.Cashfree - capital C)
     const loaded = await loadCashfreeScript();
-    if (!loaded || !window.cashfree) {
+    const CashfreeFn = (window as any).Cashfree;
+    if (!loaded || typeof CashfreeFn !== 'function') {
       throw new Error('Failed to load Cashfree SDK');
     }
 
-    // Initialize Cashfree Checkout
-    const cashfree = window.cashfree;
+    // Initialize with mode (must match backend: sandbox or production)
+    const cashfree = CashfreeFn({
+      mode: orderData.mode || (import.meta.env.VITE_CASHFREE_ENV === 'production' ? 'production' : 'sandbox'),
+    });
 
     // Open Cashfree checkout
     cashfree.checkout({

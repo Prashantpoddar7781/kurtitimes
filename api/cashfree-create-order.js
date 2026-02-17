@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // Return payment session ID and order details
+    // Return payment session ID and order details (mode needed for SDK init)
     return res.status(200).json({
       success: true,
       order_id: orderId,
@@ -92,6 +92,7 @@ module.exports = async (req, res) => {
       api_key: appId,
       amount: amount,
       currency: currency,
+      mode: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
     });
 
   } catch (error) {
