@@ -52,9 +52,10 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
         amount: options.amount,
         currency: options.currency || 'INR',
         customer_details: {
+          customer_id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           customer_name: options.name,
           customer_phone: options.phone,
-          customer_email: options.email || '',
+          customer_email: options.email || 'customer@kurtitimes.com',
         },
         order_meta: {
           return_url: window.location.origin + '/payment-success',

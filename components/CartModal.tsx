@@ -457,7 +457,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                  <div className="bg-blue-50 p-3 rounded-md flex items-start gap-3">
                    <CreditCard className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                    <p className="text-sm text-blue-800">
-                     Secure payment powered by Razorpay. All transactions are encrypted and secure.
+                     Secure payment powered by Cashfree. All transactions are encrypted and secure.
                    </p>
                  </div>
               </form>

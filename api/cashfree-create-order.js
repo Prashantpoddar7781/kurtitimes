@@ -39,11 +39,20 @@ module.exports = async (req, res) => {
 
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Cashfree requires customer_id - ensure it exists
+    const custDetails = customer_details || {};
+    if (!custDetails.customer_id) {
+      custDetails.customer_id = `cust_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    if (!custDetails.customer_email) {
+      custDetails.customer_email = custDetails.customer_phone ? `${custDetails.customer_phone}@kurtitimes.com` : 'customer@kurtitimes.com';
+    }
+
     const orderData = {
       order_id: orderId,
       order_amount: amount,
       order_currency: currency,
-      customer_details: customer_details || {},
+      customer_details: custDetails,
       order_meta: order_meta || {},
       order_note: order_note || 'Order from Kurti Times',
     };
