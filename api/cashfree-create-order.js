@@ -1,5 +1,5 @@
-// Vercel Serverless Function - Cashfree Order Creation with Split Payment
-// Split: 2% to developer account, 98% to merchant account
+// Vercel Serverless Function - Cashfree Order Creation
+// 100% to admin/merchant account (no split)
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,8 +17,6 @@ module.exports = async (req, res) => {
   try {
     const appId = process.env.CASHFREE_APP_ID;
     const secretKey = process.env.CASHFREE_SECRET_KEY;
-    const merchantAccountId = process.env.CASHFREE_MERCHANT_ACCOUNT_ID; // Merchant's Cashfree account ID
-    const developerAccountId = process.env.CASHFREE_DEVELOPER_ACCOUNT_ID; // Your Cashfree account ID for 2% commission
 
     if (!appId || !secretKey) {
       return res.status(500).json({
@@ -39,40 +37,18 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Invalid amount. Minimum ₹1.00 required' });
     }
 
-    // Calculate split amounts (2% commission to developer)
-    const totalAmount = amount;
-    const commissionAmount = Math.round(totalAmount * 0.02); // 2% commission
-    const merchantAmount = totalAmount - commissionAmount; // 98% to merchant
-
-    // Create order with split payment configuration
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const orderData = {
       order_id: orderId,
-      order_amount: totalAmount,
+      order_amount: amount,
       order_currency: currency,
       customer_details: customer_details || {},
       order_meta: order_meta || {},
       order_note: order_note || 'Order from Kurti Times',
     };
 
-    // Add split payment configuration if both accounts are configured
-    if (merchantAccountId && developerAccountId) {
-      orderData.order_splits = [
-        {
-          vendor: merchantAccountId,
-          amount: merchantAmount,
-          description: 'Merchant payment (98%)'
-        },
-        {
-          vendor: developerAccountId,
-          amount: commissionAmount,
-          description: 'Developer commission (2%)'
-        }
-      ];
-    }
-
-    // Create payment session with Cashfree
+    // Create payment session with Cashfree (100% to merchant)
     const cashfreeUrl = process.env.CASHFREE_ENV === 'production' 
       ? 'https://api.cashfree.com/pg/orders'
       : 'https://sandbox.cashfree.com/pg/orders';
@@ -105,14 +81,8 @@ module.exports = async (req, res) => {
       order_id: orderId,
       payment_session_id: data.payment_session_id,
       api_key: appId,
-      amount: totalAmount,
+      amount: amount,
       currency: currency,
-      split_info: merchantAccountId && developerAccountId ? {
-        merchant_amount: merchantAmount,
-        commission_amount: commissionAmount,
-        merchant_percentage: 98,
-        commission_percentage: 2
-      } : null
     });
 
   } catch (error) {

@@ -3,7 +3,6 @@ import { Product } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle, CreditCard } from 'lucide-react';
 import SizeChartModal from './SizeChartModal';
-import { initiatePayment } from '../services/razorpayService';
 
 interface ProductDetailProps {
   product: Product;
