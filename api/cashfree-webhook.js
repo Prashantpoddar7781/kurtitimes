@@ -134,9 +134,6 @@ async function createShiprocketFromWebhook(data) {
 }
 
 async function getShiprocketToken() {
-  const apiKey = process.env.SHIPROCKET_API_KEY;
-  if (apiKey) return apiKey;
-
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;
   if (!email || !password) return null;

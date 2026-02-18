@@ -14,25 +14,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Check if API key is provided (new method)
-    const apiKey = process.env.SHIPROCKET_API_KEY;
-    
-    if (apiKey) {
-      // Use API key directly as token
-      return res.status(200).json({
-        token: apiKey,
-        expires_in: 86400 // API keys typically don't expire
-      });
-    }
-
-    // Fallback to email/password authentication (old method)
+    // Shiprocket requires JWT from auth/login - static API keys are NOT valid Bearer tokens
     const email = process.env.SHIPROCKET_EMAIL;
     const password = process.env.SHIPROCKET_PASSWORD;
 
     if (!email || !password) {
       return res.status(500).json({
         error: 'Shiprocket credentials not configured',
-        message: 'Please set either SHIPROCKET_API_KEY (recommended) or SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD in Vercel Dashboard'
+        message: 'Set SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD (API user from Shiprocket Settings > API) in Vercel Dashboard'
       });
     }
 
