@@ -46,15 +46,14 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
     }
   }, [isOpen]);
 
-  // Calculate shipping when pincode changes
+  // Shipping disabled for now - always free
   useEffect(() => {
+    setShippingCost(0);
     if (pincode && validatePincode(pincode)) {
       const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const shipping = calculateShipping(pincode, total);
-      setShippingCost(shipping.amount);
       setEstimatedDays(shipping.estimatedDays);
     } else {
-      setShippingCost(0);
       setEstimatedDays(0);
     }
   }, [pincode, cartItems]);
@@ -304,17 +303,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                        </div>
                        <div className="flex justify-between">
                          <span>Shipping</span>
-                         <span>
-                           {pincode && validatePincode(pincode) ? (
-                             shippingCost === 0 ? (
-                               <span className="text-green-600 font-medium">FREE</span>
-                             ) : (
-                               `${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}`
-                             )
-                           ) : (
-                             <span className="text-gray-400">Enter pincode</span>
-                           )}
-                         </span>
+                         <span className="text-green-600 font-medium">FREE</span>
                        </div>
                        {pincode && validatePincode(pincode) && estimatedDays > 0 && (
                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
@@ -448,9 +437,6 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                        />
                        {pincode && !validatePincode(pincode) && (
                          <p className="mt-1 text-xs text-red-600">Please enter a valid 6-digit pincode</p>
-                       )}
-                       {pincode && validatePincode(pincode) && shippingCost === 0 && (
-                         <p className="mt-1 text-xs text-green-600">🎉 Free shipping on this order!</p>
                        )}
                      </div>
                    </div>
