@@ -157,13 +157,21 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     try {
       setIsSubmitting(true);
 
-      // Upload images first via FormData (avoids "entity too large" - no base64 in JSON)
+      // Upload images to Cloudinary via our API (persistent - Railway uploads are ephemeral)
       let imageUrls: string[] = [];
       if (imageFiles.length > 0) {
         const formData = new FormData();
         imageFiles.forEach((img) => formData.append('images', img.file));
-        const uploadRes = await api.post('/api/upload/multiple', formData);
-        const files = uploadRes.data?.files || [];
+        const uploadRes = await fetch('/api/cloudinary-upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.message || 'Image upload failed');
+        }
+        const data = await uploadRes.json();
+        const files = data?.files || [];
         imageUrls = files.map((f: { url: string }) => f.url).filter(Boolean);
         if (imageUrls.length === 0) {
           throw new Error('Image upload failed');
