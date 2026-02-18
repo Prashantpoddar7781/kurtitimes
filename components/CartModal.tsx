@@ -86,6 +86,27 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
     setIsProcessing(true);
 
+    // Store checkout data for Shiprocket - we redirect to Cashfree, so createShipment runs on return
+    sessionStorage.setItem('checkout_for_shiprocket', JSON.stringify({
+      name,
+      phone,
+      email: email || '',
+      addressLine1,
+      addressLine2: addressLine2 || '',
+      city,
+      state,
+      pincode,
+      cartItems: cartItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        selectedSize: item.selectedSize,
+      })),
+      subtotal,
+      total,
+    }));
+
     const orderItems = cartItems.map(item => 
       `${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} x${item.quantity}`
     ).join(', ');

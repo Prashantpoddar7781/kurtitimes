@@ -65,7 +65,7 @@ export interface ShipmentResponse {
 // Get authentication token from Shiprocket
 export const getShiprocketToken = async (): Promise<string> => {
   try {
-    const response = await fetch('/api/shiprocket/auth', {
+    const response = await fetch('/api/shiprocket-auth', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -93,7 +93,7 @@ export const getShippingRates = async (
   try {
     const token = await getShiprocketToken();
 
-    const response = await fetch('/api/shiprocket/rates', {
+    const response = await fetch('/api/shiprocket-rates', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ export const createShipment = async (
   try {
     const token = await getShiprocketToken();
 
-    const response = await fetch('/api/shiprocket/create-shipment', {
+    const response = await fetch('/api/shiprocket-create-shipment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ export const generateLabel = async (shipmentId: number): Promise<string> => {
   try {
     const token = await getShiprocketToken();
 
-    const response = await fetch('/api/shiprocket/generate-label', {
+    const response = await fetch('/api/shiprocket-generate-label', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export const requestPickup = async (shipmentId: number): Promise<boolean> => {
   try {
     const token = await getShiprocketToken();
 
-    const response = await fetch('/api/shiprocket/request-pickup', {
+    const response = await fetch('/api/shiprocket-request-pickup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

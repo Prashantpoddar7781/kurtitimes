@@ -11,11 +11,15 @@ import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
 import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight, CheckCircle } from 'lucide-react';
 import api, { transformProduct } from './utils/api';
+import { createShipment } from './services/shiprocketService';
+import { CURRENCY_SYMBOL } from './constants';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<string>('home');
   const [paymentSuccessOrderId, setPaymentSuccessOrderId] = useState<string | null>(null);
+  const [shipmentInfo, setShipmentInfo] = useState<{ shipment_id?: number; awb_code?: string; courier_name?: string } | null>(null);
+  const [whatsappSent, setWhatsappSent] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -73,7 +77,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Handle return from Cashfree payment redirect
+  // Handle return from Cashfree payment redirect - create Shiprocket shipment & send WhatsApp
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('order_id') || sessionStorage.getItem('cashfree_order_id');
@@ -81,8 +85,70 @@ const App: React.FC = () => {
       setPaymentSuccessOrderId(orderId);
       sessionStorage.removeItem('cashfree_order_id');
       window.history.replaceState({}, '', window.location.pathname); // Clean URL
+
+      const checkoutData = sessionStorage.getItem('checkout_for_shiprocket');
+      if (checkoutData && !whatsappSent) {
+        const data = JSON.parse(checkoutData);
+        sessionStorage.removeItem('checkout_for_shiprocket');
+        createShipment({
+          order_id: `KT-${Date.now()}`,
+          order_date: new Date().toISOString(),
+          pickup_location: 'warehouse',
+          billing_customer_name: data.name.split(' ')[0] || data.name,
+          billing_last_name: data.name.split(' ').slice(1).join(' ') || '',
+          billing_address: data.addressLine1,
+          billing_address_2: data.addressLine2 || '',
+          billing_city: data.city,
+          billing_pincode: data.pincode,
+          billing_state: data.state,
+          billing_country: 'India',
+          billing_email: data.email || data.phone + '@temp.com',
+          billing_phone: data.phone,
+          shipping_is_billing: true,
+          shipping_customer_name: data.name.split(' ')[0] || data.name,
+          shipping_last_name: data.name.split(' ').slice(1).join(' ') || '',
+          shipping_address: data.addressLine1,
+          shipping_address_2: data.addressLine2 || '',
+          shipping_city: data.city,
+          shipping_pincode: data.pincode,
+          shipping_state: data.state,
+          shipping_country: 'India',
+          shipping_email: data.email || data.phone + '@temp.com',
+          shipping_phone: data.phone,
+          order_items: data.cartItems.map((item: any) => ({
+            name: item.name,
+            sku: `SKU-${item.id}-${item.selectedSize || 'M'}`,
+            units: item.quantity,
+            selling_price: item.price,
+          })),
+          payment_method: 'Prepaid',
+          sub_total: data.subtotal,
+          length: 20,
+          breadth: 15,
+          height: 5,
+          weight: Math.max(0.5, data.cartItems.length * 0.3),
+        })
+          .then((shipment) => {
+            setShipmentInfo({
+              shipment_id: shipment.shipment_id,
+              awb_code: shipment.awb_code,
+              courier_name: shipment.courier_name,
+            });
+            const orderDetails = data.cartItems.map((item: any) =>
+              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+            ).join('\n');
+            const shippingAddress = `${data.addressLine1}${data.addressLine2 ? `, ${data.addressLine2}` : ''}, ${data.city}, ${data.state} - ${data.pincode}`;
+            let msg = `*Order Confirmed - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total Paid: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*\n\nThank you!`;
+            if (shipment.shipment_id) {
+              msg = `*Order Confirmed - Kurti Times* ✅\n\n*Shipment ID:* ${shipment.shipment_id}\n*AWB:* ${shipment.awb_code || 'Pending'}\n*Courier:* ${shipment.courier_name || 'TBD'}\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total Paid: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*\n\nThank you!`;
+            }
+            setWhatsappSent(true);
+            window.open(`https://wa.me/919892794421?text=${encodeURIComponent(msg)}`, '_blank');
+          })
+          .catch((err) => console.error('Shiprocket error:', err));
+      }
     }
-  }, []);
+  }, [whatsappSent]);
 
   // Randomly select 3 best sellers for the Best Sellers page
   const bestSellers = useMemo(() => {
@@ -531,6 +597,11 @@ const App: React.FC = () => {
             </div>
             <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
             <p className="text-gray-600 mb-4">Thank you for your order. Order ID: {paymentSuccessOrderId}</p>
+            {shipmentInfo?.shipment_id && (
+              <p className="text-sm text-gray-500 mb-4">
+                Shipment created ✓ AWB: {shipmentInfo.awb_code || 'Pending'} · {shipmentInfo.courier_name || 'Courier'}
+              </p>
+            )}
             <button
               onClick={() => { setPaymentSuccessOrderId(null); handleNavigation('home'); }}
               className="w-full px-6 py-3 bg-brand-700 text-white rounded-lg font-medium hover:bg-brand-800 transition-colors"
