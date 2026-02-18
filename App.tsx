@@ -9,12 +9,13 @@ import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
-import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import { Phone, Mail, MapPin, Send, Star, MessageCircle, ArrowUpNarrowWide, SlidersHorizontal, ChevronRight, CheckCircle } from 'lucide-react';
 import api, { transformProduct } from './utils/api';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<string>('home');
+  const [paymentSuccessOrderId, setPaymentSuccessOrderId] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,6 +70,17 @@ const App: React.FC = () => {
     const currentUser = localStorage.getItem('kurtiTimesCurrentUser');
     if (currentUser) {
       setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Handle return from Cashfree payment redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('order_id') || sessionStorage.getItem('cashfree_order_id');
+    if (window.location.pathname.includes('payment-success') && orderId) {
+      setPaymentSuccessOrderId(orderId);
+      sessionStorage.removeItem('cashfree_order_id');
+      window.history.replaceState({}, '', window.location.pathname); // Clean URL
     }
   }, []);
 
@@ -511,6 +523,23 @@ const App: React.FC = () => {
       )}
 
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} />
+      {paymentSuccessOrderId && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-gray-500/75 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+            <div className="bg-green-50 p-4 rounded-full mb-4 inline-flex">
+              <CheckCircle className="h-12 w-12 text-green-600" />
+            </div>
+            <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
+            <p className="text-gray-600 mb-4">Thank you for your order. Order ID: {paymentSuccessOrderId}</p>
+            <button
+              onClick={() => { setPaymentSuccessOrderId(null); handleNavigation('home'); }}
+              className="w-full px-6 py-3 bg-brand-700 text-white rounded-lg font-medium hover:bg-brand-800 transition-colors"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </div>
+      )}
       <InfoModal isOpen={!!activeInfoPage} onClose={() => setActiveInfoPage(null)} title={getModalTitle()}>{renderInfoContent()}</InfoModal>
 
       <AdminDashboard
