@@ -22,9 +22,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Ensure image URL is absolute and points to backend (fixes localhost/wrong BACKEND_URL)
+const normalizeImageUrl = (url: string): string => {
+  if (!url) return '';
+  const base = API_URL.replace(/\/$/, '');
+  if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+    const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+    return base + path;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return base + url;
+  return url;
+};
+
 // Helper to transform backend product to frontend Product format
 export const transformProduct = (backendProduct: any) => {
   const category = ENUM_TO_CATEGORY[backendProduct.category] || backendProduct.category;
+  const rawImage = backendProduct.image || backendProduct.images?.[0] || '';
+  const image = normalizeImageUrl(rawImage);
+  const rawImages = backendProduct.images || [backendProduct.image].filter(Boolean);
+  const images = rawImages.map((u: string) => normalizeImageUrl(u)).filter(Boolean);
   return {
     id: backendProduct.id,
     name: backendProduct.name,
@@ -32,8 +49,8 @@ export const transformProduct = (backendProduct: any) => {
     stock: backendProduct.stock || 0,
     stockBySize: backendProduct.stockBySize || {},
     category,
-    image: backendProduct.image || backendProduct.images?.[0] || '',
-    images: backendProduct.images || [backendProduct.image].filter(Boolean),
+    image,
+    images,
     description: backendProduct.description || '',
     rating: backendProduct.rating || 0,
     topLength: backendProduct.topLength,

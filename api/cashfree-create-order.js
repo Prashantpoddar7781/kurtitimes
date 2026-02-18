@@ -84,18 +84,12 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // Build redirect URL as fallback when SDK fails to load
     const isProd = process.env.CASHFREE_ENV === 'production';
-    const paymentUrl = isProd
-      ? `https://payments.cashfree.com/pg/webview/pay/${data.payment_session_id}`
-      : `https://payments-test.cashfree.com/pg/webview/pay/${data.payment_session_id}`;
 
-    // Return payment session ID and order details (mode needed for SDK init)
     return res.status(200).json({
       success: true,
       order_id: orderId,
       payment_session_id: data.payment_session_id,
-      payment_url: paymentUrl, // Fallback redirect when SDK fails
       api_key: appId,
       amount: amount,
       currency: currency,
