@@ -2,7 +2,7 @@
 // Script is loaded from /api/cashfree-sdk (same-origin)
 
 export interface PaymentOptions {
-  amount: number;
+  amount: number; // Amount in rupees (e.g. 543 for ₹543)
   currency: string;
   name: string;
   phone: string;

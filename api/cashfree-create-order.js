@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
 
     const { amount, currency = 'INR', customer_details, order_meta, order_note } = body;
 
-    if (!amount || amount < 100) {
+    if (!amount || amount < 1) {
       return res.status(400).json({ error: 'Invalid amount. Minimum ₹1.00 required' });
     }
 

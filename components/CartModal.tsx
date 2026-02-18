@@ -63,12 +63,13 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + shippingCost;
-  const amountInPaise = Math.round(total * 100); // Convert to paise
+  // Cashfree expects amount in rupees (e.g. 543 for ₹543), not paise
+  const amountInRupees = Math.round(total * 100) / 100;
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (amountInPaise < 100) {
+    if (amountInRupees < 1) {
       alert('Minimum order amount is ₹1.00');
       return;
     }
@@ -92,7 +93,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
     try {
       await initiatePayment({
-        amount: amountInPaise,
+        amount: amountInRupees,
         currency: 'INR',
         name: name,
         phone: phone,
@@ -187,7 +188,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         },
         onFailure: (error) => {
           setIsProcessing(false);
-          if (error.code !== 'USER_CLOSED') {
+          // Don't alert for USER_CLOSED or PAYMENT_CANCELLED - with redirect, SDK may falsely report these before navigating
+          if (error.code !== 'USER_CLOSED' && error.code !== 'PAYMENT_CANCELLED') {
             alert(`Payment failed: ${error.message || 'Please try again'}`);
           }
         },
