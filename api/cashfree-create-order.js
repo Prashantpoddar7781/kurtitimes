@@ -31,13 +31,24 @@ module.exports = async (req, res) => {
       body = JSON.parse(body);
     }
 
-    const { amount, currency = 'INR', customer_details, order_meta, order_note } = body;
+    const { amount, currency = 'INR', customer_details, order_meta, order_note, shipping_for_webhook } = body;
 
     if (!amount || amount < 1) {
       return res.status(400).json({ error: 'Invalid amount. Minimum ₹1.00 required' });
     }
 
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Encode shipping data for webhook (order_tags: max 15 tags, 255 chars each)
+    let orderTags = null;
+    if (shipping_for_webhook) {
+      const encoded = Buffer.from(JSON.stringify(shipping_for_webhook)).toString('base64');
+      orderTags = {};
+      for (let i = 0; i < encoded.length; i += 250) {
+        const key = i === 0 ? 'sh' : `sh${Math.floor(i / 250)}`;
+        orderTags[key] = encoded.slice(i, i + 250);
+      }
+    }
 
     // Cashfree requires customer_id - ensure it exists
     const custDetails = customer_details || {};
@@ -55,6 +66,7 @@ module.exports = async (req, res) => {
       customer_details: custDetails,
       order_meta: order_meta || {},
       order_note: order_note || 'Order from Kurti Times',
+      ...(orderTags && { order_tags: orderTags }),
     };
 
     // Create payment session with Cashfree (100% to merchant)

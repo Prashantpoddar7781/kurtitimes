@@ -1,5 +1,5 @@
 // Vercel Serverless Function - Cashfree Webhook Handler
-// Handles payment status updates from Cashfree
+// Handles payment status updates from Cashfree + creates Shiprocket shipment
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -7,12 +7,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const secretKey = process.env.CASHFREE_WEBHOOK_SECRET;
-
-    // Verify webhook signature (if configured)
-    // In production, you should verify the signature for security
-
-    // Parse webhook payload
     let body = req.body;
     if (typeof body === 'string') {
       body = JSON.parse(body);
@@ -20,24 +14,17 @@ module.exports = async (req, res) => {
 
     const { type, data } = body;
 
-    // Handle different webhook events
     switch (type) {
       case 'PAYMENT_SUCCESS_WEBHOOK':
-        // Payment successful
-        console.log('Payment successful:', data);
-        // Here you can:
-        // - Update order status in database
-        // - Send confirmation emails
-        // - Trigger fulfillment processes
+        console.log('Payment successful:', JSON.stringify(data).slice(0, 500));
+        await createShiprocketFromWebhook(data);
         break;
 
       case 'PAYMENT_FAILED_WEBHOOK':
-        // Payment failed
         console.log('Payment failed:', data);
         break;
 
       case 'PAYMENT_USER_DROPPED_WEBHOOK':
-        // User cancelled payment
         console.log('Payment cancelled:', data);
         break;
 
@@ -45,12 +32,125 @@ module.exports = async (req, res) => {
         console.log('Unknown webhook type:', type);
     }
 
-    // Always return 200 to acknowledge receipt
     return res.status(200).json({ received: true });
-
   } catch (error) {
     console.error('Webhook error:', error);
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
 };
+
+async function createShiprocketFromWebhook(data) {
+  if (!data || !data.order) return;
+
+  const orderTags = data.order?.order_tags;
+  if (!orderTags || typeof orderTags !== 'object') {
+    console.log('No order_tags - shipment will be created from client on return');
+    return;
+  }
+
+  // Reassemble base64 chunks (sh, sh1, sh2, ...) in order
+  const keys = Object.keys(orderTags).filter((k) => k.startsWith('sh'));
+  keys.sort((a, b) => {
+    const na = a === 'sh' ? 0 : parseInt(String(a).replace('sh', ''), 10) || 0;
+    const nb = b === 'sh' ? 0 : parseInt(String(b).replace('sh', ''), 10) || 0;
+    return na - nb;
+  });
+  const encoded = keys.map((k) => orderTags[k]).join('');
+  if (!encoded) return;
+
+  let shipping;
+  try {
+    shipping = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+  } catch (e) {
+    console.error('Failed to parse shipping data:', e);
+    return;
+  }
+
+  const token = await getShiprocketToken();
+  if (!token) {
+    console.error('Shiprocket auth failed - cannot create shipment');
+    return;
+  }
+
+  const orderId = data.order?.order_id || `KT-${Date.now()}`;
+  const shipmentPayload = {
+    order_id: `KT-${orderId.replace(/^order_/, '')}`,
+    order_date: new Date().toISOString(),
+    pickup_location: 'warehouse',
+    billing_customer_name: (shipping.name || '').split(' ')[0] || 'Customer',
+    billing_last_name: (shipping.name || '').split(' ').slice(1).join(' ') || '',
+    billing_address: shipping.addressLine1 || 'Address',
+    billing_address_2: shipping.addressLine2 || '',
+    billing_city: shipping.city || 'City',
+    billing_pincode: shipping.pincode || '000000',
+    billing_state: shipping.state || 'State',
+    billing_country: 'India',
+    billing_email: shipping.email || (shipping.phone || '') + '@temp.com',
+    billing_phone: shipping.phone || '0000000000',
+    shipping_is_billing: true,
+    shipping_customer_name: (shipping.name || '').split(' ')[0] || 'Customer',
+    shipping_last_name: (shipping.name || '').split(' ').slice(1).join(' ') || '',
+    shipping_address: shipping.addressLine1 || 'Address',
+    shipping_address_2: shipping.addressLine2 || '',
+    shipping_city: shipping.city || 'City',
+    shipping_pincode: shipping.pincode || '000000',
+    shipping_state: shipping.state || 'State',
+    shipping_country: 'India',
+    shipping_email: shipping.email || (shipping.phone || '') + '@temp.com',
+    shipping_phone: shipping.phone || '0000000000',
+    order_items: (shipping.cartItems || []).map((it) => ({
+      name: it.name || 'Product',
+      sku: `SKU-${it.id || 0}-${it.selectedSize || 'M'}`,
+      units: it.quantity || 1,
+      selling_price: it.price || 0,
+    })),
+    payment_method: 'Prepaid',
+    sub_total: shipping.subtotal || 0,
+    length: 20,
+    breadth: 15,
+    height: 5,
+    weight: Math.max(0.5, (shipping.cartItems || []).length * 0.3),
+  };
+
+  if (shipmentPayload.order_items.length === 0) {
+    shipmentPayload.order_items = [{ name: 'Order', sku: 'SKU-0', units: 1, selling_price: shipmentPayload.sub_total }];
+  }
+
+  try {
+    const resp = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(shipmentPayload),
+    });
+    const result = await resp.json();
+    if (resp.ok) {
+      console.log('Shiprocket shipment created:', result.shipment_id, result.awb_code);
+    } else {
+      console.error('Shiprocket create failed:', result);
+    }
+  } catch (e) {
+    console.error('Shiprocket API error:', e);
+  }
+}
+
+async function getShiprocketToken() {
+  const apiKey = process.env.SHIPROCKET_API_KEY;
+  if (apiKey) return apiKey;
+
+  const email = process.env.SHIPROCKET_EMAIL;
+  const password = process.env.SHIPROCKET_PASSWORD;
+  if (!email || !password) return null;
+
+  try {
+    const resp = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    return resp.ok ? data.token : null;
+  } catch {
+    return null;
+  }
+}
 

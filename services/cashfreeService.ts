@@ -10,6 +10,22 @@ export interface PaymentOptions {
   description: string;
   onSuccess: (paymentId: string, orderId: string) => void;
   onFailure: (error: any) => void;
+  /** Optional: stored before redirect for Shiprocket on return (client-side backup) */
+  checkoutForShiprocket?: Record<string, unknown>;
+  /** Optional: shipping + cart for webhook (server-side shipment creation) */
+  shippingForWebhook?: {
+    name: string;
+    phone: string;
+    email: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    cartItems: Array<{ id: number; name: string; quantity: number; price: number; selectedSize?: string }>;
+    subtotal: number;
+    total: number;
+  };
 }
 
 export const loadCashfreeScript = (): Promise<boolean> => {
@@ -31,10 +47,11 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
           customer_email: options.email || 'customer@kurtitimes.com',
         },
         order_meta: {
-          return_url: window.location.origin + '/payment-success',
+          return_url: window.location.origin + '/payment-success?order_id={order_id}',
           notify_url: window.location.origin + '/api/cashfree-webhook',
         },
         order_note: options.description,
+        shipping_for_webhook: options.shippingForWebhook,
       }),
     });
 
@@ -62,6 +79,13 @@ export const initiatePayment = async (options: PaymentOptions): Promise<void> =>
 
     const mode = orderData.mode || (import.meta.env.VITE_CASHFREE_ENV === 'production' ? 'production' : 'sandbox');
     const cashfree = CashfreeFn({ mode });
+
+    // Store checkout data right before redirect (backup - survives cross-origin)
+    if (options.checkoutForShiprocket) {
+      try {
+        localStorage.setItem('checkout_for_shiprocket', JSON.stringify(options.checkoutForShiprocket));
+      } catch (_) {}
+    }
 
     cashfree.checkout({
       paymentSessionId: orderData.payment_session_id,

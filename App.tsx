@@ -81,15 +81,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('order_id') || sessionStorage.getItem('cashfree_order_id');
-    if (window.location.pathname.includes('payment-success') && orderId) {
-      setPaymentSuccessOrderId(orderId);
+    const checkoutData = localStorage.getItem('checkout_for_shiprocket');
+    const isPaymentSuccess = window.location.pathname.includes('payment-success');
+    if (isPaymentSuccess && (orderId || checkoutData)) {
+      setPaymentSuccessOrderId(orderId || 'Order confirmed');
       sessionStorage.removeItem('cashfree_order_id');
       window.history.replaceState({}, '', window.location.pathname); // Clean URL
 
-      const checkoutData = sessionStorage.getItem('checkout_for_shiprocket');
+      const checkoutData = localStorage.getItem('checkout_for_shiprocket');
       if (checkoutData && !whatsappSent) {
         const data = JSON.parse(checkoutData);
-        sessionStorage.removeItem('checkout_for_shiprocket');
+        localStorage.removeItem('checkout_for_shiprocket');
         createShipment({
           order_id: `KT-${Date.now()}`,
           order_date: new Date().toISOString(),

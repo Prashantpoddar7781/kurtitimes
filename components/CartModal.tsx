@@ -86,8 +86,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
     setIsProcessing(true);
 
-    // Store checkout data for Shiprocket - we redirect to Cashfree, so createShipment runs on return
-    sessionStorage.setItem('checkout_for_shiprocket', JSON.stringify({
+    const orderItems = cartItems.map(item => 
+      `${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} x${item.quantity}`
+    ).join(', ');
+
+    const checkoutData = {
       name,
       phone,
       email: email || '',
@@ -105,11 +108,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       })),
       subtotal,
       total,
-    }));
-
-    const orderItems = cartItems.map(item => 
-      `${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} x${item.quantity}`
-    ).join(', ');
+    };
 
     try {
       await initiatePayment({
@@ -119,6 +118,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         phone: phone,
         email: email || undefined,
         description: `Order from Kurti Times - ${orderItems}`,
+        checkoutForShiprocket: checkoutData,
+        shippingForWebhook: checkoutData,
         onSuccess: async (paymentId, orderId) => {
           setIsProcessing(false);
           
