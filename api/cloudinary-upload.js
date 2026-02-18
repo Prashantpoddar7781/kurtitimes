@@ -1,6 +1,6 @@
 // Vercel Serverless - Upload images to Cloudinary (persistent storage)
 const { v2: cloudinary } = require('cloudinary');
-const formidable = require('formidable');
+const { formidable } = require('formidable');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
