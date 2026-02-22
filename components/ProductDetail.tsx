@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
-import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ruler, ShoppingBag, MessageCircle, ZoomIn, ZoomOut, X } from 'lucide-react';
 import SizeChartModal from './SizeChartModal';
 
 interface ProductDetailProps {
@@ -15,6 +15,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const images = product.images || [product.image];
   
@@ -84,23 +86,32 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
             {/* Image Gallery */}
             <div className="relative bg-gray-100">
               <div className="sticky top-0">
-                {/* Main Image */}
-                <div className="relative aspect-square overflow-hidden">
+                {/* Main Image - click to zoom */}
+                <div
+                  className="relative aspect-square overflow-hidden cursor-zoom-in group"
+                  onClick={() => { setShowZoom(true); setZoomLevel(1); }}
+                >
                   <img
                     src={images[selectedImageIndex]}
                     alt={product.name}
                     className="w-full h-full object-cover"
+                    draggable={false}
                   />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium bg-white/90 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                      <ZoomIn className="h-4 w-4" /> Click to zoom
+                    </span>
+                  </div>
                   {images.length > 1 && (
                     <>
                       <button
-                        onClick={prevImage}
+                        onClick={(e) => { e.stopPropagation(); prevImage(); }}
                         className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
                       >
                         <ChevronLeft className="h-5 w-5 text-gray-700" />
                       </button>
                       <button
-                        onClick={nextImage}
+                        onClick={(e) => { e.stopPropagation(); nextImage(); }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
                       >
                         <ChevronRight className="h-5 w-5 text-gray-700" />
@@ -250,6 +261,85 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
           </div>
         </div>
       </div>
+
+      {/* Image Zoom Lightbox */}
+      {showZoom && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/95 flex flex-col"
+          onClick={() => setShowZoom(false)}
+        >
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => setShowZoom(false)}
+              className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <span className="text-white text-sm font-medium">
+              {selectedImageIndex + 1} / {images.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(0.5, z - 0.5)); }}
+                className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-5 w-5" />
+              </button>
+              <span className="text-white text-xs min-w-[3rem] text-center">{Math.round(zoomLevel * 100)}%</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(3, z + 0.5)); }}
+                className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div
+            className="flex-1 flex items-center justify-center overflow-hidden p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative max-w-full max-h-full overflow-auto">
+              <img
+                src={images[selectedImageIndex]}
+                alt={product.name}
+                className="max-w-full max-h-[70vh] object-contain transition-transform duration-200 select-none"
+                style={{ transform: `scale(${zoomLevel})` }}
+                draggable={false}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          {images.length > 1 && (
+            <div className="flex justify-center gap-2 pb-6">
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedImageIndex((i) => (i - 1 + images.length) % images.length); setZoomLevel(1); }}
+                className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <div className="flex gap-2 items-center">
+                {images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); setZoomLevel(1); }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${selectedImageIndex === idx ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white/60'}`}
+                    aria-label={`Image ${idx + 1}`}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedImageIndex((i) => (i + 1) % images.length); setZoomLevel(1); }}
+                className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <SizeChartModal isOpen={showSizeChart} onClose={() => setShowSizeChart(false)} />
     </>
