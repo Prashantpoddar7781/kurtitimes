@@ -20,6 +20,7 @@ export interface Product {
   topLength?: string;
   pantLength?: string;
   fabric?: string;
+  washCare?: string;
   availableSizes?: string[];
 }
 

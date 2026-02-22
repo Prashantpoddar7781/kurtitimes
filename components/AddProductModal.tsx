@@ -8,6 +8,8 @@ interface AddProductModalProps {
   onClose: () => void;
   onSave: (product: Product) => void | Promise<void>;
   nextId: number;
+  /** When provided, modal works in edit mode */
+  initialProduct?: Product | null;
 }
 
 interface ImageFile {
@@ -15,7 +17,9 @@ interface ImageFile {
   preview: string;
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId, initialProduct }) => {
+  const isEditMode = !!initialProduct;
+  
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('10');
@@ -26,6 +30,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const [fabric, setFabric] = useState('Rayon');
   const [washCare, setWashCare] = useState('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
   const [imageFiles, setImageFiles] = useState<ImageFile[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [availableSizes, setAvailableSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
   const [stockBySize, setStockBySize] = useState<{ [size: string]: number }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -34,6 +39,40 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+  // Populate form when editing, reset when adding
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialProduct) {
+      setName(initialProduct.name);
+      setPrice(String(initialProduct.price));
+      setStock(String(initialProduct.stock || 0));
+      setCategory(initialProduct.category);
+      setDescription(initialProduct.description || '');
+      setTopLength(initialProduct.topLength || '45 inches');
+      setPantLength(initialProduct.pantLength || '39 inches');
+      setFabric(initialProduct.fabric || 'Rayon');
+      setWashCare(initialProduct.washCare || 'This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
+      setExistingImageUrls(initialProduct.images || (initialProduct.image ? [initialProduct.image] : []));
+      setImageFiles([]);
+      setAvailableSizes(initialProduct.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
+      setStockBySize(initialProduct.stockBySize || {});
+    } else {
+      setName('');
+      setPrice('');
+      setStock('10');
+      setCategory(Category.KURTI_SET);
+      setDescription('');
+      setTopLength('45 inches');
+      setPantLength('39 inches');
+      setFabric('Rayon');
+      setWashCare('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
+      setExistingImageUrls([]);
+      setImageFiles([]);
+      setAvailableSizes(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
+      setStockBySize({});
+    }
+  }, [isOpen, initialProduct?.id]);
 
   useEffect(() => {
     if (isOpen) setSaveError(null);
@@ -46,7 +85,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     if (!files) return;
 
     const newFiles: ImageFile[] = [];
-    const remainingSlots = 5 - imageFiles.length;
+    const remainingSlots = 5 - imageFiles.length - existingImageUrls.length;
 
     for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
       const file = files[i];
@@ -68,6 +107,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     const imageToRemove = imageFiles[index];
     URL.revokeObjectURL(imageToRemove.preview);
     setImageFiles(imageFiles.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index: number) => {
+    setExistingImageUrls(existingImageUrls.filter((_, i) => i !== index));
   };
 
   const handleImageClick = () => {
@@ -112,10 +155,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
       newErrors.price = 'Valid price is required';
     }
 
-    if (imageFiles.length < 1) {
+    const totalImages = imageFiles.length + existingImageUrls.length;
+    if (totalImages < 1) {
       newErrors.images = 'At least 1 image is required';
     }
-    if (imageFiles.length > 5) {
+    if (totalImages > 5) {
       newErrors.images = 'Maximum 5 images allowed';
     }
 
@@ -157,8 +201,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     try {
       setIsSubmitting(true);
 
-      // Upload images to Cloudinary via our API (persistent - Railway uploads are ephemeral)
-      let imageUrls: string[] = [];
+      // Upload new images to Cloudinary
+      let newImageUrls: string[] = [];
       if (imageFiles.length > 0) {
         const formData = new FormData();
         imageFiles.forEach((img) => formData.append('images', img.file));
@@ -172,14 +216,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
         }
         const data = await uploadRes.json();
         const files = data?.files || [];
-        imageUrls = files.map((f: { url: string }) => f.url).filter(Boolean);
-        if (imageUrls.length === 0) {
+        newImageUrls = files.map((f: { url: string }) => f.url).filter(Boolean);
+        if (imageFiles.length > 0 && newImageUrls.length === 0) {
           throw new Error('Image upload failed');
         }
       }
 
+      const imageUrls = isEditMode
+        ? [...existingImageUrls, ...newImageUrls]
+        : newImageUrls;
+
       const newProduct: Product = {
-        id: nextId,
+        id: isEditMode ? initialProduct!.id : nextId,
         name: name.trim(),
         price: parseFloat(price),
         stock: parseInt(stock) || 0,
@@ -192,11 +240,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
         topLength: topLength.trim() || undefined,
         pantLength: pantLength.trim() || undefined,
         fabric: fabric.trim() || undefined,
+        washCare: washCare.trim() || undefined,
         availableSizes: availableSizes,
       };
 
       await onSave(newProduct);
-      handleReset();
+      if (!isEditMode) handleReset();
       onClose();
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to save product. Please try again.';
@@ -207,9 +256,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   };
 
   const handleReset = () => {
-    // Clean up object URLs
     imageFiles.forEach(img => URL.revokeObjectURL(img.preview));
-    
     setName('');
     setPrice('');
     setStock('10');
@@ -220,6 +267,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
     setFabric('Rayon');
     setWashCare('This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.');
     setImageFiles([]);
+    setExistingImageUrls([]);
     setAvailableSizes(['S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
     setStockBySize({});
     setErrors({});
@@ -236,7 +284,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-xl font-serif font-bold text-gray-900">Add New Product</h2>
+            <h2 className="text-xl font-serif font-bold text-gray-900">{isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <X className="h-6 w-6" />
             </button>
@@ -324,17 +372,30 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                   className="hidden"
                 />
 
-                {/* Image Preview Grid */}
-                {imageFiles.length > 0 && (
+                {/* Image Preview Grid - existing (edit) + new uploads */}
+                {(existingImageUrls.length > 0 || imageFiles.length > 0) && (
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                    {imageFiles.map((imageFile, index) => (
-                      <div key={index} className="relative group">
+                    {existingImageUrls.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative group">
                         <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
-                          <img
-                            src={imageFile.preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={url} alt={`Existing ${index + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(index)}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        {index === 0 && imageFiles.length === 0 && (
+                          <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-brand-700 text-white text-xs rounded">Main</div>
+                        )}
+                      </div>
+                    ))}
+                    {imageFiles.map((imageFile, index) => (
+                      <div key={`new-${index}`} className="relative group">
+                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                          <img src={imageFile.preview} alt={`New ${index + 1}`} className="w-full h-full object-cover" />
                         </div>
                         <button
                           type="button"
@@ -343,10 +404,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                        {index === 0 && (
-                          <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-brand-700 text-white text-xs rounded">
-                            Main
-                          </div>
+                        {existingImageUrls.length === 0 && index === 0 && (
+                          <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-brand-700 text-white text-xs rounded">Main</div>
                         )}
                       </div>
                     ))}
@@ -354,14 +413,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                 )}
 
                 {/* Upload Button */}
-                {imageFiles.length < 5 && (
+                {existingImageUrls.length + imageFiles.length < 5 && (
                   <button
                     type="button"
                     onClick={handleImageClick}
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-brand-500 hover:text-brand-700 transition-colors"
                   >
                     <Upload className="h-5 w-5" />
-                    {imageFiles.length === 0 ? 'Upload Images (1-5)' : `Add More Images (${imageFiles.length}/5)`}
+                    {existingImageUrls.length + imageFiles.length === 0 ? 'Upload Images (1-5)' : `Add More Images (${existingImageUrls.length + imageFiles.length}/5)`}
                   </button>
                 )}
 
@@ -524,7 +583,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
                   disabled={isSubmitting}
                   className="flex-1 px-4 py-2 bg-brand-700 text-white rounded-md hover:bg-brand-800 transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Saving...' : 'Add Product'}
+                  {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Add Product'}
                 </button>
               </div>
             </form>

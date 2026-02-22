@@ -56,6 +56,7 @@ export const transformProduct = (backendProduct: any) => {
     topLength: backendProduct.topLength,
     pantLength: backendProduct.pantLength,
     fabric: backendProduct.fabric,
+    washCare: backendProduct.washCare,
     availableSizes: backendProduct.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
   };
 };
@@ -86,6 +87,7 @@ export const transformProductForBackend = (product: any) => {
     topLength: product.topLength,
     pantLength: product.pantLength,
     fabric: product.fabric,
+    washCare: product.washCare,
     availableSizes: product.availableSizes || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
   };
 };

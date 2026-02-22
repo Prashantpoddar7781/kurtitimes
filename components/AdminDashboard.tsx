@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Edit2, Trash2, Plus, Save, XCircle } from 'lucide-react';
+import { X, Edit2, Trash2, Plus } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
@@ -77,9 +77,9 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, products, onUpdateProducts }) => {
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editedProducts, setEditedProducts] = useState<Product[]>(products);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,45 +116,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   if (!isOpen) return null;
 
   const handleEdit = (product: Product) => {
-    setEditingProduct({ ...product });
+    setEditProduct({ ...product });
     setError(null);
+    setIsAddProductOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!editingProduct) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const productData = transformProductForBackend(editingProduct);
-      const response = await api.put(`/api/products/${editingProduct.id}`, productData);
-      
-      const updatedProduct = transformProduct(response.data);
-      const updated = editedProducts.map(p => 
-        p.id === editingProduct.id ? updatedProduct : p
-      );
-      setEditedProducts(updated);
-      onUpdateProducts(updated);
-      setEditingProduct(null);
-    } catch (err: any) {
-      console.error('Failed to update product:', err);
-      setError(err.response?.data?.error || 'Failed to update product. Please try again.');
-      // Still update locally for better UX
-      const updated = editedProducts.map(p => 
-        p.id === editingProduct.id ? editingProduct : p
-      );
-      setEditedProducts(updated);
-      onUpdateProducts(updated);
-    } finally {
-      setLoading(false);
-    }
+  const handleCloseAddOrEdit = () => {
+    setIsAddProductOpen(false);
+    setEditProduct(null);
   };
 
-  const handleCancel = () => {
-    setEditingProduct(null);
-    setError(null);
-  };
 
   const handleDelete = async (productId: number) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
@@ -185,29 +156,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
     setError(null);
   };
 
-  const handleSaveNewProduct = async (newProduct: Product) => {
+  const handleSaveProduct = async (product: Product) => {
     setLoading(true);
     setError(null);
     try {
-      const productData = transformProductForBackend(newProduct);
-      const response = await api.post('/api/products', productData);
+      const productData = transformProductForBackend(product);
+      const isEdit = !!editProduct;
       
-      const savedProduct = transformProduct(response.data);
-      const updated = [...editedProducts, savedProduct];
-      setEditedProducts(updated);
-      onUpdateProducts(updated);
+      if (isEdit) {
+        const response = await api.put(`/api/products/${product.id}`, productData);
+        const savedProduct = transformProduct(response.data);
+        const updated = editedProducts.map(p => p.id === product.id ? savedProduct : p);
+        setEditedProducts(updated);
+        onUpdateProducts(updated);
+      } else {
+        const response = await api.post('/api/products', productData);
+        const savedProduct = transformProduct(response.data);
+        const updated = [...editedProducts, savedProduct];
+        setEditedProducts(updated);
+        onUpdateProducts(updated);
+      }
     } catch (err: any) {
-      console.error('Failed to create product:', err);
-      setError(err.response?.data?.error || 'Failed to create product. Please try again.');
-      throw err; // Let AddProductModal show error and keep form open
+      console.error('Failed to save product:', err);
+      setError(err.response?.data?.error || 'Failed to save product. Please try again.');
+      throw err;
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUpdateField = (field: keyof Product, value: any) => {
-    if (!editingProduct) return;
-    setEditingProduct({ ...editingProduct, [field]: value });
   };
 
   // Auto-allocate stock for existing products (5 to first size, 1 each to rest)
@@ -308,9 +283,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
 
             <AddProductModal
               isOpen={isAddProductOpen}
-              onClose={() => setIsAddProductOpen(false)}
-              onSave={handleSaveNewProduct}
-              nextId={Math.max(...editedProducts.map(p => p.id), 0) + 1}
+              onClose={handleCloseAddOrEdit}
+              onSave={handleSaveProduct}
+              nextId={0}
+              initialProduct={editProduct}
             />
 
             {/* Products Table - Desktop View */}
@@ -332,106 +308,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                         <div className="flex items-center">
                           <img className="h-10 w-10 rounded object-cover" src={product.image} alt={product.name} />
                           <div className="ml-4">
-                            {editingProduct?.id === product.id ? (
-                              <input
-                                type="text"
-                                value={editingProduct.name}
-                                onChange={(e) => handleUpdateField('name', e.target.value)}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium"
-                              />
-                            ) : (
-                              <>
-                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                <div className="text-sm text-gray-500">ID: {product.id}</div>
-                              </>
-                            )}
+                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                            <div className="text-sm text-gray-500">ID: {product.id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {editingProduct?.id === product.id ? (
-                          <input
-                            type="number"
-                            value={editingProduct.price}
-                            onChange={(e) => handleUpdateField('price', parseFloat(e.target.value) || 0)}
-                            className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
-                        )}
+                        <span className="text-sm text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
                       </td>
                        <td className="px-6 py-4 whitespace-nowrap">
-                         {editingProduct?.id === product.id ? (
-                           <StockBySizeEditor
-                             product={editingProduct}
-                             onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
-                           />
-                         ) : (
-                           <div className="flex flex-col items-end gap-1">
-                             <StockDisplay product={product} />
-                             {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
-                               <button
-                                 onClick={() => handleAutoAllocateStock(product)}
-                                 className="text-xs text-brand-600 hover:text-brand-800 underline"
-                                 title="Auto-allocate: 5 to S, 1 each to others"
-                               >
-                                 Auto-allocate
-                               </button>
-                             )}
-                           </div>
-                         )}
+                         <div className="flex flex-col items-end gap-1">
+                           <StockDisplay product={product} />
+                           {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
+                             <button
+                               onClick={() => handleAutoAllocateStock(product)}
+                               className="text-xs text-brand-600 hover:text-brand-800 underline"
+                               title="Auto-allocate: 5 to S, 1 each to others"
+                             >
+                               Auto-allocate
+                             </button>
+                           )}
+                         </div>
                        </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {editingProduct?.id === product.id ? (
-                          <select
-                            value={editingProduct.category}
-                            onChange={(e) => handleUpdateField('category', e.target.value as Category)}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm"
-                          >
-                            {Object.values(Category).map(cat => (
-                              <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="text-sm text-gray-500">{product.category}</span>
-                        )}
+                        <span className="text-sm text-gray-500">{product.category}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {editingProduct?.id === product.id ? (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={handleSave}
-                              className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
-                              title="Save"
-                            >
-                              <Save className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={handleCancel}
-                              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
-                              title="Cancel"
-                            >
-                              <XCircle className="h-5 w-5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => handleEdit(product)}
-                              className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
-                              title="Edit"
-                            >
-                              <Edit2 className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product.id)}
+                            className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -446,112 +364,52 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                   <div className="flex items-start gap-3 mb-3">
                     <img className="h-16 w-16 rounded object-cover flex-shrink-0" src={product.image} alt={product.name} />
                     <div className="flex-1 min-w-0">
-                      {editingProduct?.id === product.id ? (
-                        <input
-                          type="text"
-                          value={editingProduct.name}
-                          onChange={(e) => handleUpdateField('name', e.target.value)}
-                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium mb-1"
-                        />
-                      ) : (
-                        <>
-                          <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
-                          <div className="text-xs text-gray-500">ID: {product.id}</div>
-                        </>
-                      )}
+                      <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
+                      <div className="text-xs text-gray-500">ID: {product.id}</div>
                     </div>
-                    {editingProduct?.id === product.id ? (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={handleSave}
-                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
-                          title="Save"
-                        >
-                          <Save className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
-                          title="Cancel"
-                        >
-                          <XCircle className="h-5 w-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-50 rounded"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500">Price:</span>
-                      {editingProduct?.id === product.id ? (
-                        <input
-                          type="number"
-                          value={editingProduct.price}
-                          onChange={(e) => handleUpdateField('price', parseFloat(e.target.value) || 0)}
-                          className="w-24 border border-gray-300 rounded px-2 py-1 text-sm text-right"
-                        />
-                      ) : (
-                        <span className="text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
-                      )}
+                      <span className="text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{product.price.toLocaleString('en-IN')}</span>
                     </div>
                     
                      <div className="flex justify-between items-start">
                        <span className="text-xs text-gray-500">Stock:</span>
-                       {editingProduct?.id === product.id ? (
-                         <div className="flex-1 ml-4">
-                           <StockBySizeEditor
-                             product={editingProduct}
-                             onUpdate={(stockBySize) => handleUpdateField('stockBySize', stockBySize)}
-                           />
-                         </div>
-                       ) : (
-                         <div className="flex flex-col items-end gap-1">
-                           <StockDisplay product={product} />
-                           {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
-                             <button
-                               onClick={() => handleAutoAllocateStock(product)}
-                               className="text-xs text-brand-600 hover:text-brand-800 underline"
-                               title="Auto-allocate: 5 to S, 1 each to others"
-                             >
-                               Auto-allocate
-                             </button>
-                           )}
-                         </div>
-                       )}
+                       <div className="flex flex-col items-end gap-1">
+                         <StockDisplay product={product} />
+                         {(!product.stockBySize || Object.keys(product.stockBySize).length === 0) && (
+                           <button
+                             onClick={() => handleAutoAllocateStock(product)}
+                             className="text-xs text-brand-600 hover:text-brand-800 underline"
+                             title="Auto-allocate: 5 to S, 1 each to others"
+                           >
+                             Auto-allocate
+                           </button>
+                         )}
+                       </div>
                      </div>
                     
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500">Category:</span>
-                      {editingProduct?.id === product.id ? (
-                        <select
-                          value={editingProduct.category}
-                          onChange={(e) => handleUpdateField('category', e.target.value as Category)}
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
-                        >
-                          {Object.values(Category).filter(cat => cat !== Category.ALL).map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-gray-500">{product.category}</span>
-                      )}
+                      <span className="text-sm text-gray-500">{product.category}</span>
                     </div>
                   </div>
                 </div>

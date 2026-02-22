@@ -28,17 +28,23 @@ enum OrderStatus {
 }
 
 model Product {
-  id          String      @id @default(cuid())
-  name        String
-  price       Float
-  category    Category
-  description String
-  images      String[]
-  rating      Float       @default(0)
-  stock       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orderItems  OrderItem[]
+  id             String      @id @default(cuid())
+  name           String
+  price          Float
+  category       Category
+  description    String
+  images         String[]
+  rating         Float       @default(0)
+  stock          Int         @default(0)
+  topLength      String?
+  pantLength     String?
+  fabric         String?
+  washCare       String?
+  stockBySize    Json?       // { "S": 5, "M": 10, ... }
+  availableSizes String[]    @default(["S", "M", "L", "XL", "XXL", "XXXL"])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  orderItems     OrderItem[]
 
   @@index([category])
   @@index([createdAt])

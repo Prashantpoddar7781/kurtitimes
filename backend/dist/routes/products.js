@@ -52,7 +52,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/products - Create product (auth disabled for now - add back when login fixed)
 router.post('/', async (req, res) => {
     try {
-        const { name, price, category, description, images, stock, rating } = req.body;
+        const { name, price, category, description, images, stock, rating, topLength, pantLength, fabric, washCare, stockBySize, availableSizes } = req.body;
         if (!name || !price || !category || !description) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
@@ -64,7 +64,13 @@ router.post('/', async (req, res) => {
                 description,
                 images: Array.isArray(images) ? images : [],
                 stock: stock ? parseInt(stock) : 0,
-                rating: rating ? parseFloat(rating) : 0
+                rating: rating ? parseFloat(rating) : 0,
+                ...(topLength != null && { topLength: String(topLength) }),
+                ...(pantLength != null && { pantLength: String(pantLength) }),
+                ...(fabric != null && { fabric: String(fabric) }),
+                ...(washCare != null && { washCare: String(washCare) }),
+                ...(stockBySize != null && { stockBySize: typeof stockBySize === 'object' ? stockBySize : {} }),
+                ...(availableSizes != null && { availableSizes: Array.isArray(availableSizes) ? availableSizes : [] })
             }
         });
         res.status(201).json(product);
@@ -76,17 +82,23 @@ router.post('/', async (req, res) => {
 // PUT /api/products/:id - Update product
 router.put('/:id', async (req, res) => {
     try {
-        const { name, price, category, description, images, stock, rating } = req.body;
+        const { name, price, category, description, images, stock, rating, topLength, pantLength, fabric, washCare, stockBySize, availableSizes } = req.body;
         const product = await prisma.product.update({
             where: { id: req.params.id },
             data: {
-                ...(name && { name }),
-                ...(price && { price: parseFloat(price) }),
-                ...(category && { category }),
-                ...(description && { description }),
-                ...(images && { images: Array.isArray(images) ? images : [] }),
+                ...(name != null && { name }),
+                ...(price != null && { price: parseFloat(price) }),
+                ...(category != null && { category }),
+                ...(description != null && { description }),
+                ...(images != null && { images: Array.isArray(images) ? images : [] }),
                 ...(stock !== undefined && { stock: parseInt(stock) }),
-                ...(rating !== undefined && { rating: parseFloat(rating) })
+                ...(rating !== undefined && { rating: parseFloat(rating) }),
+                ...(topLength !== undefined && { topLength: topLength ? String(topLength) : null }),
+                ...(pantLength !== undefined && { pantLength: pantLength ? String(pantLength) : null }),
+                ...(fabric !== undefined && { fabric: fabric ? String(fabric) : null }),
+                ...(washCare !== undefined && { washCare: washCare ? String(washCare) : null }),
+                ...(stockBySize !== undefined && { stockBySize: stockBySize && typeof stockBySize === 'object' ? stockBySize : null }),
+                ...(availableSizes !== undefined && { availableSizes: Array.isArray(availableSizes) ? availableSizes : [] })
             }
         });
         res.json(product);

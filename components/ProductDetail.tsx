@@ -224,8 +224,14 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
 
               {/* Product Details */}
               <div className="border-t border-gray-200 pt-6 space-y-4">
+                {product.description && (
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">Description</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{product.description}</p>
+                  </div>
+                )}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">Description</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Product Details</h3>
                   <div className="space-y-2 text-sm text-gray-700">
                     <p><strong>Top Length:</strong> {product.topLength || '45 inches'}</p>
                     <p><strong>Pant Length:</strong> {product.pantLength || '39 inches'}</p>
@@ -235,8 +241,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
 
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-3">Details & Wash Care</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {product.washCare || 'This Product is handmade. Actual colors may vary slightly due to your screens resolution and settings.'}
                   </p>
                 </div>
               </div>
