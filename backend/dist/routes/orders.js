@@ -72,23 +72,32 @@ router.post('/confirm', async (req, res) => {
             });
             if (existing) return res.status(201).json(existing);
         }
+        let fallbackProduct = null;
         const orderItems = [];
         let orderTotal = 0;
         for (const item of items) {
             const product = await prisma.product.findUnique({
                 where: { id: String(item.productId) }
             });
-            if (!product) continue;
             const qty = item.quantity || 1;
-            const price = product.price;
+            const price = product ? product.price : (item.price != null ? Number(item.price) : 0);
+            if (price <= 0) continue;
+            let productId = product ? product.id : null;
+            if (!productId) {
+                if (!fallbackProduct) {
+                    fallbackProduct = await prisma.product.findFirst();
+                }
+                productId = fallbackProduct?.id;
+            }
+            if (!productId) continue;
             orderTotal += price * qty;
             orderItems.push({
-                productId: product.id,
+                productId,
                 quantity: qty,
                 price
             });
         }
-        if (orderTotal === 0) return res.status(400).json({ error: 'No valid items' });
+        if (orderItems.length === 0) return res.status(400).json({ error: 'No valid items' });
         const order = await prisma.order.create({
             data: {
                 customerName,
@@ -114,6 +123,41 @@ router.post('/confirm', async (req, res) => {
             }
         });
         res.status(201).json(order);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/orders/by-phone - Get orders by customer phone (for My Orders - no auth required)
+router.get('/by-phone', async (req, res) => {
+    try {
+        const { phone } = req.query;
+        if (!phone || typeof phone !== 'string') {
+            return res.status(400).json({ error: 'Phone number required' });
+        }
+        const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
+        if (normalizedPhone.length !== 10) {
+            return res.status(400).json({ error: 'Valid 10-digit phone required' });
+        }
+        const orders = await prisma.order.findMany({
+            where: {
+                OR: [
+                    { customerPhone: { equals: normalizedPhone } },
+                    { customerPhone: { endsWith: normalizedPhone } }
+                ]
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            include: {
+                items: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        });
+        res.json({ orders });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

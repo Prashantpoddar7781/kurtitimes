@@ -6,6 +6,7 @@ import InfoModal from './components/InfoModal';
 import ProductDetail from './components/ProductDetail';
 import VideoCategoryTile from './components/VideoCategoryTile';
 import AdminDashboard from './components/AdminDashboard';
+import MyOrders from './components/MyOrders';
 import LandingPage from './components/LandingPage';
 import { PRODUCTS } from './constants';
 import { Product, CartItem, Category } from './types';
@@ -88,10 +89,53 @@ const App: React.FC = () => {
       sessionStorage.removeItem('cashfree_order_id');
       window.history.replaceState({}, '', window.location.pathname); // Clean URL
 
-      const checkoutData = localStorage.getItem('checkout_for_shiprocket');
-      if (checkoutData && !whatsappSent) {
-        const data = JSON.parse(checkoutData);
+      const storedCheckout = localStorage.getItem('checkout_for_shiprocket');
+      if (storedCheckout && !whatsappSent) {
+        const data = JSON.parse(storedCheckout);
         localStorage.removeItem('checkout_for_shiprocket');
+        const orderDetails = data.cartItems.map((item: any) =>
+          `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
+        ).join('\n');
+        const shippingAddress = `${data.addressLine1}${data.addressLine2 ? `, ${data.addressLine2}` : ''}, ${data.city}, ${data.state} - ${data.pincode}`;
+
+        const saveOrderAndEmail = async (shipment: { shipment_id?: number; awb_code?: string; courier_name?: string } | null) => {
+          try {
+            await api.post('/api/orders/confirm', {
+              customerName: data.name,
+              customerPhone: data.phone,
+              customerEmail: data.email || null,
+              shippingAddress,
+              total: data.total,
+              items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price })),
+              cashfreeOrderId: orderId,
+              shiprocketOrderId: shipment?.shipment_id,
+              awbCode: shipment?.awb_code,
+            });
+          } catch (e) {
+            console.error('Failed to save order:', e);
+          }
+          const customerEmail = data.email || `${data.phone}@temp.com`;
+          if (customerEmail && !customerEmail.includes('@temp.com')) {
+            try {
+              await fetch('/api/send-order-confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: customerEmail,
+                  name: data.name,
+                  orderId,
+                  awbCode: shipment?.awb_code,
+                  courierName: shipment?.courier_name,
+                  orderDetails,
+                  total: data.total,
+                }),
+              });
+            } catch (e) {
+              console.error('Failed to send email:', e);
+            }
+          }
+        };
+
         createShipment({
           order_id: `KT-${Date.now()}`,
           order_date: new Date().toISOString(),
@@ -136,57 +180,18 @@ const App: React.FC = () => {
               awb_code: shipment.awb_code,
               courier_name: shipment.courier_name,
             });
-            const orderDetails = data.cartItems.map((item: any) =>
-              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
-            ).join('\n');
-            const shippingAddress = `${data.addressLine1}${data.addressLine2 ? `, ${data.addressLine2}` : ''}, ${data.city}, ${data.state} - ${data.pincode}`;
             let msg = `*Order Confirmed - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total Paid: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*\n\nThank you!`;
             if (shipment.shipment_id) {
               msg = `*Order Confirmed - Kurti Times* ✅\n\n*Shipment ID:* ${shipment.shipment_id}\n*AWB:* ${shipment.awb_code || 'Pending'}\n*Courier:* ${shipment.courier_name || 'TBD'}\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total Paid: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*\n\nThank you!`;
             }
             setWhatsappSent(true);
             window.open(`https://wa.me/919892794421?text=${encodeURIComponent(msg)}`, '_blank');
-
-            // Save order to backend for admin dashboard
-            try {
-              await api.post('/api/orders/confirm', {
-                customerName: data.name,
-                customerPhone: data.phone,
-                customerEmail: data.email || null,
-                shippingAddress,
-                total: data.total,
-                items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity })),
-                cashfreeOrderId: orderId,
-                shiprocketOrderId: shipment.shipment_id,
-                awbCode: shipment.awb_code,
-              });
-            } catch (e) {
-              console.error('Failed to save order:', e);
-            }
-
-            // Send confirmation email to customer
-            const customerEmail = data.email || `${data.phone}@temp.com`;
-            if (customerEmail && !customerEmail.includes('@temp.com')) {
-              try {
-                await fetch('/api/send-order-confirmation', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    to: customerEmail,
-                    name: data.name,
-                    orderId,
-                    awbCode: shipment.awb_code,
-                    courierName: shipment.courier_name,
-                    orderDetails,
-                    total: data.total,
-                  }),
-                });
-              } catch (e) {
-                console.error('Failed to send email:', e);
-              }
-            }
+            await saveOrderAndEmail(shipment);
           })
-          .catch((err) => console.error('Shiprocket error:', err));
+          .catch(async (err) => {
+            console.error('Shiprocket error:', err);
+            await saveOrderAndEmail(null);
+          });
       }
     }
   }, [whatsappSent]);
@@ -479,6 +484,9 @@ const App: React.FC = () => {
             )}
           </div>
         );
+
+      case 'myorders':
+        return <MyOrders />;
         
       case 'contact':
         return (

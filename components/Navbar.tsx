@@ -27,6 +27,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'home', label: 'Home' },
     { id: 'bestsellers', label: 'Best Sellers' },
+    { id: 'myorders', label: 'My Orders' },
     { id: 'contact', label: 'Contact Us' },
   ];
 
