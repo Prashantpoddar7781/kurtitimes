@@ -135,16 +135,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   }, [isOpen]);
 
   // Fetch orders when Orders tab is selected
+  const [ordersError, setOrdersError] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (isOpen && activeTab === 'orders') {
       setOrdersLoading(true);
+      setOrdersError(null);
       api.get('/api/orders?limit=100')
         .then((res) => {
-          setOrders(res.data?.orders || []);
+          const list = res.data?.orders ?? res.data;
+          setOrders(Array.isArray(list) ? list : []);
         })
         .catch((err) => {
           console.error('Failed to fetch orders:', err);
           setOrders([]);
+          const msg = err.response?.status === 401
+            ? 'Please log in again as admin'
+            : err.response?.data?.error || err.message || 'Failed to load orders';
+          setOrdersError(msg);
         })
         .finally(() => setOrdersLoading(false));
     }
@@ -335,10 +342,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
             {activeTab === 'orders' && (
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Orders Received</h2>
+                {ordersError && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{ordersError}</p>
+                  </div>
+                )}
                 {ordersLoading ? (
                   <p className="text-gray-500">Loading orders...</p>
                 ) : orders.length === 0 ? (
-                  <p className="text-gray-500">No orders yet.</p>
+                  <p className="text-gray-500">{!ordersError && 'No orders yet.'}</p>
                 ) : (
                   <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="overflow-x-auto">

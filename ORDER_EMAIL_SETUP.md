@@ -1,6 +1,28 @@
-# Order Confirmation Email Setup
+# Order & Webhook Setup
 
-Order confirmation emails are sent to customers when they place an order. They include:
+## Webhook (Required for orders)
+
+The Cashfree webhook creates Shiprocket shipments and saves orders. Set in **Vercel**:
+- `BACKEND_URL` – your Railway backend URL (e.g. `https://kurtitimes-production.up.railway.app`)
+
+Without `BACKEND_URL`, orders won't be saved and shipments won't be created.
+
+## Customer WhatsApp (order confirmation TO customer FROM 9892794421)
+
+Order confirmation is sent via WhatsApp **to the customer's number from 9892794421**. Requires Twilio WhatsApp Business API.
+
+Set in **Vercel**:
+- `TWILIO_ACCOUNT_SID` – Twilio Account SID
+- `TWILIO_AUTH_TOKEN` – Twilio Auth Token
+- `TWILIO_WHATSAPP_FROM` – `whatsapp:+919892794421` (your business number enabled for WhatsApp in Twilio)
+
+Setup: Enable WhatsApp on your number at [Twilio Console](https://console.twilio.com) → Messaging → WhatsApp senders.
+
+---
+
+# Order Confirmation Email (Optional)
+
+Order confirmation emails can be sent to customers when they place an order. They include:
 - Order ID
 - Shipment ID / AWB
 - Courier name

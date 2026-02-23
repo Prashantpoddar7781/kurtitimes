@@ -129,6 +129,21 @@ router.post('/confirm', async (req, res) => {
     }
 });
 
+// GET /api/orders/by-cashfree-id - Check if order exists (for webhook idempotency - no auth)
+router.get('/by-cashfree-id', async (req, res) => {
+    try {
+        const { order_id } = req.query;
+        if (!order_id) return res.status(400).json({ error: 'order_id required' });
+        const existing = await prisma.order.findFirst({
+            where: { cashfreeOrderId: String(order_id) }
+        });
+        res.json({ exists: !!existing });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/orders/by-phone - Get orders by customer phone (for My Orders - no auth required)
 router.get('/by-phone', async (req, res) => {
     try {

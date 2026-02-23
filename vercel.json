@@ -11,6 +11,7 @@
     {"source": "/api/shiprocket-generate-label", "destination": "/api/shiprocket-generate-label.js"},
     {"source": "/api/shiprocket-request-pickup", "destination": "/api/shiprocket-request-pickup.js"},
     {"source": "/api/send-order-confirmation", "destination": "/api/send-order-confirmation.js"},
+    {"source": "/api/send-whatsapp-order-confirmation", "destination": "/api/send-whatsapp-order-confirmation.js"},
     {"source": "/(.*)", "destination": "/index.html"}
   ]
 }

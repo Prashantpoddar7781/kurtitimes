@@ -42,9 +42,27 @@ module.exports = async (req, res) => {
 async function createShiprocketFromWebhook(data) {
   if (!data || !data.order) return;
 
+  const orderId = data.order?.order_id;
+  if (!orderId) return;
+
+  // Skip if order already saved (idempotency - prevents duplicate shipments/orders)
+  const backendUrl = process.env.VITE_API_URL || process.env.BACKEND_URL || 'https://kurtitimes-production.up.railway.app';
+  try {
+    const checkRes = await fetch(`${backendUrl}/api/orders/by-cashfree-id?order_id=${encodeURIComponent(orderId)}`, { method: 'GET' });
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      if (checkData.exists) {
+        console.log('Order already exists for', orderId, '- skipping');
+        return;
+      }
+    }
+  } catch (e) {
+    // Ignore - proceed with creation
+  }
+
   const orderTags = data.order?.order_tags;
   if (!orderTags || typeof orderTags !== 'object') {
-    console.log('No order_tags - shipment will be created from client on return');
+    console.log('No order_tags - cannot create shipment from webhook');
     return;
   }
 
@@ -72,7 +90,6 @@ async function createShiprocketFromWebhook(data) {
     return;
   }
 
-  const orderId = data.order?.order_id || `KT-${Date.now()}`;
   const shipmentPayload = {
     order_id: `KT-${orderId.replace(/^order_/, '')}`,
     order_date: new Date().toISOString(),
@@ -135,9 +152,7 @@ async function createShiprocketFromWebhook(data) {
 }
 
 async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrderId) {
-  const backendUrl = process.env.VITE_API_URL || process.env.BACKEND_URL || 'https://kurtitimes-production.up.railway.app';
-  const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+  const backendUrl = process.env.BACKEND_URL || process.env.VITE_API_URL || 'https://kurtitimes-production.up.railway.app';
 
   const shippingAddress = [
     shipping.addressLine1,
@@ -169,28 +184,28 @@ async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrd
     console.error('Failed to save order:', e);
   }
 
-  const customerEmail = shipping.email || (shipping.phone ? `${shipping.phone}@temp.com` : null);
-  if (customerEmail && !customerEmail.includes('@temp.com')) {
-    try {
-      const orderDetails = (shipping.cartItems || [])
-        .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)
-        .join('\n');
-      await fetch(`${baseUrl}/api/send-order-confirmation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: customerEmail,
-          name: shipping.name,
-          orderId: cashfreeOrderId,
-          awbCode: shipmentResult?.awb_code,
-          courierName: shipmentResult?.courier_name,
-          orderDetails,
-          total: shipping.total,
-        }),
-      });
-    } catch (e) {
-      console.error('Failed to send email:', e);
-    }
+  // Send order confirmation via WhatsApp TO the customer FROM 9892794421 (via Twilio)
+  const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+  try {
+    const orderDetails = (shipping.cartItems || [])
+      .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)
+      .join('\n');
+    await fetch(`${baseUrl}/api/send-whatsapp-order-confirmation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: shipping.phone,
+        name: shipping.name,
+        orderId: cashfreeOrderId,
+        awbCode: shipmentResult?.awb_code,
+        courierName: shipmentResult?.courier_name,
+        orderDetails,
+        total: shipping.total,
+      }),
+    });
+  } catch (e) {
+    console.error('Failed to send WhatsApp to customer:', e);
   }
 }
 
