@@ -19,7 +19,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProdu
         <img
           src={product.image || '/placeholder.svg'}
           alt={product.name}
-          className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+          className="h-full w-full object-contain object-center bg-white group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23d1d5db"%3E%3Cpath d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/%3E%3C/svg%3E';
@@ -29,10 +29,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProdu
 
       {/* Info Section */}
       <div className="p-2 sm:p-3 flex flex-col flex-1">
-        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-tight truncate">
-          {product.category === 'Kurti Set' ? 'Kurti Times' : 'Mira Boutique'}
-        </h3>
-        <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+        <p className="text-[11px] text-gray-500 truncate leading-tight">
           {product.name}
         </p>
         
