@@ -84,17 +84,17 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             {/* Image Gallery */}
-            <div className="relative bg-gray-100">
+            <div className="relative bg-white">
               <div className="sticky top-0">
                 {/* Main Image - click to zoom */}
                 <div
-                  className="relative aspect-square overflow-hidden cursor-zoom-in group"
+                  className="relative aspect-square overflow-hidden cursor-zoom-in group bg-white"
                   onClick={() => { setShowZoom(true); setZoomLevel(1); }}
                 >
                   <img
                     src={images[selectedImageIndex]}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-white"
                     draggable={false}
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
@@ -137,7 +137,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                           <img
                             src={img}
                             alt={`${product.name} ${idx + 1}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain bg-white"
                           />
                         </button>
                       ))}
