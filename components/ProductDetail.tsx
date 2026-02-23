@@ -151,7 +151,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
             <div className="bg-white p-6">
               <div className="mb-4">
                 <h2 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-2">{product.name}</h2>
-                <p className="text-sm text-gray-500 mb-4">{product.name.toUpperCase().replace(/\s/g, '')}-{selectedSize || 'M'}</p>
               </div>
 
               {/* Price */}
@@ -245,7 +244,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onClose, onAddTo
                   <h3 className="text-lg font-bold text-gray-900 mb-3">Product Details</h3>
                   <div className="space-y-2 text-sm text-gray-700">
                     <p><strong>Top Length:</strong> {product.topLength || '45 inches'}</p>
-                    <p><strong>Pant Length:</strong> {product.pantLength || '39 inches'}</p>
+                    {product.pantLength && product.pantLength !== '0' && (
+                      <p><strong>Pant Length:</strong> {product.pantLength}</p>
+                    )}
                     <p><strong>Fabric:</strong> {product.fabric || 'Rayon'}</p>
                   </div>
                 </div>
