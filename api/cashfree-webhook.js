@@ -125,11 +125,72 @@ async function createShiprocketFromWebhook(data) {
     const result = await resp.json();
     if (resp.ok) {
       console.log('Shiprocket shipment created:', result.shipment_id, result.awb_code);
+      await saveOrderAndSendEmail(data, shipping, result, orderId);
     } else {
       console.error('Shiprocket create failed:', result);
     }
   } catch (e) {
     console.error('Shiprocket API error:', e);
+  }
+}
+
+async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrderId) {
+  const backendUrl = process.env.VITE_API_URL || process.env.BACKEND_URL || 'https://kurtitimes-production.up.railway.app';
+  const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+
+  const shippingAddress = [
+    shipping.addressLine1,
+    shipping.addressLine2,
+    shipping.city,
+    shipping.state,
+    shipping.pincode,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  try {
+    await fetch(`${backendUrl}/api/orders/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: shipping.name,
+        customerPhone: shipping.phone,
+        customerEmail: shipping.email || null,
+        shippingAddress,
+        total: shipping.total,
+        items: (shipping.cartItems || []).map((c) => ({ productId: c.id, quantity: c.quantity })),
+        cashfreeOrderId,
+        shiprocketOrderId: shipmentResult?.shipment_id,
+        awbCode: shipmentResult?.awb_code,
+      }),
+    });
+  } catch (e) {
+    console.error('Failed to save order:', e);
+  }
+
+  const customerEmail = shipping.email || (shipping.phone ? `${shipping.phone}@temp.com` : null);
+  if (customerEmail && !customerEmail.includes('@temp.com')) {
+    try {
+      const orderDetails = (shipping.cartItems || [])
+        .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)
+        .join('\n');
+      await fetch(`${baseUrl}/api/send-order-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: customerEmail,
+          name: shipping.name,
+          orderId: cashfreeOrderId,
+          awbCode: shipmentResult?.awb_code,
+          courierName: shipmentResult?.courier_name,
+          orderDetails,
+          total: shipping.total,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to send email:', e);
+    }
   }
 }
 

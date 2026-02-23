@@ -58,6 +58,68 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// POST /api/orders/confirm - Create confirmed order (from payment success, no stock check)
+router.post('/confirm', async (req, res) => {
+    try {
+        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode } = req.body;
+        if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        if (cashfreeOrderId) {
+            const existing = await prisma.order.findFirst({
+                where: { cashfreeOrderId: String(cashfreeOrderId) }
+            });
+            if (existing) return res.status(201).json(existing);
+        }
+        const orderItems = [];
+        let orderTotal = 0;
+        for (const item of items) {
+            const product = await prisma.product.findUnique({
+                where: { id: String(item.productId) }
+            });
+            if (!product) continue;
+            const qty = item.quantity || 1;
+            const price = product.price;
+            orderTotal += price * qty;
+            orderItems.push({
+                productId: product.id,
+                quantity: qty,
+                price
+            });
+        }
+        if (orderTotal === 0) return res.status(400).json({ error: 'No valid items' });
+        const order = await prisma.order.create({
+            data: {
+                customerName,
+                customerPhone,
+                customerEmail: customerEmail || null,
+                shippingAddress: shippingAddress || null,
+                total: total ?? orderTotal,
+                status: 'PAID',
+                paymentId: paymentId || null,
+                paymentStatus: 'success',
+                cashfreeOrderId: cashfreeOrderId || null,
+                shiprocketOrderId: shiprocketOrderId ? String(shiprocketOrderId) : null,
+                items: {
+                    create: orderItems
+                }
+            },
+            include: {
+                items: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        });
+        res.status(201).json(order);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/orders - List orders (admin only)
 router.get('/', authenticate, requireAdmin, async (req, res) => {
     try {

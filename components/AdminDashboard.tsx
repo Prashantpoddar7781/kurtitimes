@@ -1,9 +1,27 @@
 import React, { useState } from 'react';
-import { X, Edit2, Trash2, Plus } from 'lucide-react';
+import { X, Edit2, Trash2, Plus, Package, ShoppingBag } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
 import api, { transformProduct, transformProductForBackend } from '../utils/api';
+
+interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  shippingAddress?: string | null;
+  total: number;
+  status: string;
+  cashfreeOrderId?: string | null;
+  shiprocketOrderId?: string | null;
+  createdAt: string;
+  items: Array<{
+    quantity: number;
+    price: number;
+    product?: { name: string };
+  }>;
+}
 
 // Stock Display Component
 const StockDisplay: React.FC<{ product: Product }> = ({ product }) => {
@@ -82,6 +100,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   // Update local products when props change
   React.useEffect(() => {
@@ -112,6 +133,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
       refreshProducts();
     }
   }, [isOpen]);
+
+  // Fetch orders when Orders tab is selected
+  React.useEffect(() => {
+    if (isOpen && activeTab === 'orders') {
+      setOrdersLoading(true);
+      api.get('/api/orders?limit=100')
+        .then((res) => {
+          setOrders(res.data?.orders || []);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch orders:', err);
+          setOrders([]);
+        })
+        .finally(() => setOrdersLoading(false));
+    }
+  }, [isOpen, activeTab]);
 
   if (!isOpen) return null;
 
@@ -254,6 +291,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
               <X className="h-6 w-6" />
             </button>
           </div>
+          <div className="flex gap-4 mt-4 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`flex items-center gap-2 pb-3 px-1 font-medium border-b-2 transition-colors ${
+                activeTab === 'products'
+                  ? 'border-brand-700 text-brand-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Package className="h-5 w-5" />
+              Products
+            </button>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`flex items-center gap-2 pb-3 px-1 font-medium border-b-2 transition-colors ${
+                activeTab === 'orders'
+                  ? 'border-brand-700 text-brand-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <ShoppingBag className="h-5 w-5" />
+              Orders
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -269,6 +330,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                 <p className="text-sm text-blue-800">Processing...</p>
               </div>
             )}
+
+            {/* Orders Tab */}
+            {activeTab === 'orders' && (
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Orders Received</h2>
+                {ordersLoading ? (
+                  <p className="text-gray-500">Loading orders...</p>
+                ) : orders.length === 0 ? (
+                  <p className="text-gray-500">No orders yet.</p>
+                ) : (
+                  <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {orders.map((order) => (
+                            <tr key={order.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{order.customerName}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{order.customerPhone}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${
+                                  order.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'DELIVERED' ? 'bg-purple-100 text-purple-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Products Tab */}
+            {activeTab === 'products' && (
+              <>
             <div className="mb-6 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Products Management</h2>
               <button
@@ -415,6 +536,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                 </div>
               ))}
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>

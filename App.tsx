@@ -130,7 +130,7 @@ const App: React.FC = () => {
           height: 5,
           weight: Math.max(0.5, data.cartItems.length * 0.3),
         })
-          .then((shipment) => {
+          .then(async (shipment) => {
             setShipmentInfo({
               shipment_id: shipment.shipment_id,
               awb_code: shipment.awb_code,
@@ -146,6 +146,45 @@ const App: React.FC = () => {
             }
             setWhatsappSent(true);
             window.open(`https://wa.me/919892794421?text=${encodeURIComponent(msg)}`, '_blank');
+
+            // Save order to backend for admin dashboard
+            try {
+              await api.post('/api/orders/confirm', {
+                customerName: data.name,
+                customerPhone: data.phone,
+                customerEmail: data.email || null,
+                shippingAddress,
+                total: data.total,
+                items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity })),
+                cashfreeOrderId: orderId,
+                shiprocketOrderId: shipment.shipment_id,
+                awbCode: shipment.awb_code,
+              });
+            } catch (e) {
+              console.error('Failed to save order:', e);
+            }
+
+            // Send confirmation email to customer
+            const customerEmail = data.email || `${data.phone}@temp.com`;
+            if (customerEmail && !customerEmail.includes('@temp.com')) {
+              try {
+                await fetch('/api/send-order-confirmation', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    to: customerEmail,
+                    name: data.name,
+                    orderId,
+                    awbCode: shipment.awb_code,
+                    courierName: shipment.courier_name,
+                    orderDetails,
+                    total: data.total,
+                  }),
+                });
+              } catch (e) {
+                console.error('Failed to send email:', e);
+              }
+            }
           })
           .catch((err) => console.error('Shiprocket error:', err));
       }
