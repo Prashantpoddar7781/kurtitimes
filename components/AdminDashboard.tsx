@@ -103,6 +103,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   // Update local products when props change
   React.useEffect(() => {
@@ -378,6 +379,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8"></th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
@@ -387,30 +389,63 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {orders.map((order) => (
-                            <tr key={order.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm text-gray-900">
-                                {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{order.customerName}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{order.customerPhone}</td>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}</td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${
-                                  order.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                                  order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                                  order.status === 'DELIVERED' ? 'bg-purple-100 text-purple-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {order.status}
-                                </span>
-                              </td>
-                            </tr>
+                            <React.Fragment key={order.id}>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2">
+                                  <button
+                                    onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                    className="p-1 text-gray-500 hover:text-brand-600"
+                                    title={expandedOrderId === order.id ? 'Collapse' : 'View order details'}
+                                  >
+                                    {expandedOrderId === order.id ? '▼' : '▶'}
+                                  </button>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{order.customerName}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{order.customerPhone}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${
+                                    order.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                                    order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                                    order.status === 'DELIVERED' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {order.status}
+                                  </span>
+                                </td>
+                              </tr>
+                              {expandedOrderId === order.id && (
+                                <tr>
+                                  <td colSpan={6} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                                    <div className="space-y-2">
+                                      {order.shippingAddress && (
+                                        <p className="text-xs text-gray-600"><strong>Shipping:</strong> {order.shippingAddress}</p>
+                                      )}
+                                      <div className="text-sm">
+                                        <strong className="block mb-2">Order items:</strong>
+                                        <ul className="space-y-1">
+                                          {order.items?.map((item, idx) => (
+                                            <li key={idx} className="flex justify-between gap-4">
+                                              <span>{item.product?.name || 'Product'} × {item.quantity}</span>
+                                              <span>{CURRENCY_SYMBOL}{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           ))}
                         </tbody>
                       </table>

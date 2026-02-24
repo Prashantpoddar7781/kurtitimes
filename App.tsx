@@ -226,10 +226,6 @@ const App: React.FC = () => {
   const handleAdminLogin = async (userId: string, password: string): Promise<boolean> => {
     // Allow hardcoded admin credentials (ID and password)
     if (userId.trim() === '7624029175' && password === '7624029175') {
-      // #region agent log
-      const base = api.defaults.baseURL || '';
-      fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleAdminLogin',message:'Admin login attempt',data:{baseURL:base,fullUrl:base?`${base.replace(/\/$/,'')}/api/auth/login`:'(no base)'},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       try {
         const res = await api.post('/api/auth/login', { email: '7624029175', password: '7624029175' });
         const token = res.data?.token;
@@ -240,14 +236,7 @@ const App: React.FC = () => {
           setIsAuthenticated(true);
           return true;
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleAdminLogin',message:'No token in response',data:{hasData:!!res?.data},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
       } catch (err: any) {
-        // #region agent log
-        const errDetail = { code: err?.code, message: err?.message, status: err?.response?.status };
-        fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleAdminLogin',message:'Admin login catch',data:errDetail,hypothesisId:'B,D',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         const base = api.defaults.baseURL || '(not set)';
         const msg = err?.code === 'ERR_NETWORK' ? 'Network error – backend unreachable. URL: ' + base
           : err?.response?.status ? `Server error ${err.response.status}. URL: ${base}${err?.response?.data?.error ? '\n\n' + err.response.data.error : ''}`
