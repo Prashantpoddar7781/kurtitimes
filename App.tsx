@@ -250,7 +250,7 @@ const App: React.FC = () => {
         // #endregion
         const base = api.defaults.baseURL || '(not set)';
         const msg = err?.code === 'ERR_NETWORK' ? 'Network error – backend unreachable. URL: ' + base
-          : err?.response?.status ? `Server error ${err.response.status}. URL: ${base}`
+          : err?.response?.status ? `Server error ${err.response.status}. URL: ${base}${err?.response?.data?.error ? '\n\n' + err.response.data.error : ''}`
           : (err?.message || String(err));
         alert('Could not connect to admin server.\n\n' + msg);
       }

