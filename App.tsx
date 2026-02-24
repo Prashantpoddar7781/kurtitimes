@@ -231,16 +231,14 @@ const App: React.FC = () => {
         const token = res.data?.token;
         if (token) {
           localStorage.setItem('kurtiTimesAdminToken', token);
-          setIsAdminLoggedIn(true);
-          setIsAdminDashboardOpen(true);
-          setIsAuthenticated(true);
-          return true;
         }
       } catch (_) {
-        // Backend unreachable - orders won't load
+        // Backend unreachable - allow access; Orders tab will show an error and can retry
       }
-      alert('Could not connect to admin server. Check your internet and try again.');
-      return false;
+      setIsAdminLoggedIn(true);
+      setIsAdminDashboardOpen(true);
+      setIsAuthenticated(true);
+      return true;
     }
     // Try backend login with User ID as email (for other admins)
     try {
