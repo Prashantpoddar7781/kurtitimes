@@ -158,6 +158,38 @@ router.post('/confirm', async (req, res) => {
     }
 });
 
+// GET /api/orders/email-test - Check if backend can send email (no auth)
+router.get('/email-test', async (req, res) => {
+    try {
+        const apiKey = process.env.RESEND_API_KEY;
+        const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+        const adminEmail = process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com';
+        if (!apiKey) {
+            return res.json({ ok: false, error: 'RESEND_API_KEY not set in Railway. Add it in Project > Variables.' });
+        }
+        if (req.query.send === '1' || req.query.send === 'true') {
+            const r = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    from: `Kurti Times <${fromEmail}>`,
+                    to: [adminEmail],
+                    subject: 'Backend email test – Kurti Times',
+                    html: '<p>If you got this, backend email is working.</p>',
+                }),
+            });
+            if (!r.ok) {
+                const err = await r.text();
+                return res.json({ ok: false, error: 'Resend rejected: ' + err });
+            }
+            return res.json({ ok: true, message: `Test email sent to ${adminEmail}` });
+        }
+        return res.json({ ok: true, configured: true, fromEmail, adminEmail, message: 'Add ?send=1 to send test email' });
+    } catch (e) {
+        return res.json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/orders/by-cashfree-id - Check if order exists (for webhook idempotency - no auth)
 router.get('/by-cashfree-id', async (req, res) => {
     try {
