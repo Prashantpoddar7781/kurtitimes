@@ -16,6 +16,7 @@ interface Order {
   status: string;
   cashfreeOrderId?: string | null;
   shiprocketOrderId?: string | null;
+  awbCode?: string | null;
   createdAt: string;
   items: OrderItem[];
 }
@@ -127,19 +128,28 @@ const MyOrders: React.FC = () => {
                   </li>
                 ))}
               </ul>
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                <span className="font-bold text-brand-900">
-                  Total: {CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}
-                </span>
-                {order.shiprocketOrderId && (
-                  <a
-                    href="https://www.shiprocket.in/shipment-tracking"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-brand-700 hover:text-brand-800 text-sm font-medium"
-                  >
-                    <Truck className="h-4 w-4" /> Track
-                  </a>
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-brand-900">
+                    Total: {CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}
+                  </span>
+                  {(order.awbCode || order.shiprocketOrderId) && (
+                    <a
+                      href={order.awbCode
+                        ? `https://shiprocket.in/shipment-tracking?awb=${encodeURIComponent(order.awbCode)}`
+                        : 'https://www.shiprocket.in/shipment-tracking'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-brand-700 hover:text-brand-800 text-sm font-medium"
+                    >
+                      <Truck className="h-4 w-4" /> Track
+                    </a>
+                  )}
+                </div>
+                {order.awbCode && (
+                  <p className="text-xs text-gray-500">
+                    AWB: <span className="font-mono font-medium">{order.awbCode}</span>
+                  </p>
                 )}
               </div>
             </div>

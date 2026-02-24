@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, name, orderId, awbCode, courierName, orderDetails, total, isCOD, test } = req.body;
+    const { to, name, orderId, awbCode, courierName, orderDetails, total, isCOD, shippingAddress, test } = req.body;
 
     // Test mode: POST { "test": true } to send a test email to admin
     if (test === true) {
@@ -96,14 +96,38 @@ module.exports = async (req, res) => {
 </html>
 `;
 
-    const payload = {
+    const customerPayload = {
       from: `Kurti Times <${fromEmail}>`,
       subject: `Order Confirmed - Kurti Times (${orderId || ''})`,
       html,
     };
 
+    const adminHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Order Received - Kurti Times</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #dc2626;">New Order Received – Kurti Times</h2>
+  <p>A new order has been placed. Please process it.</p>
+  <p><strong>Order ID:</strong> ${orderId || 'N/A'}</p>
+  <p><strong>Customer:</strong> ${name || 'N/A'}</p>
+  ${shippingAddress ? `<p><strong>Shipping Address:</strong><br>${String(shippingAddress).replace(/\n/g, '<br>')}</p>` : ''}
+  <p><strong>Payment:</strong> ${isCOD ? 'COD (Collect on delivery)' : 'Prepaid'}</p>
+  ${awbCode ? `
+  <p style="background: #f0fdf4; padding: 12px; border-radius: 8px; border-left: 4px solid #7c3aed;">
+    <strong>Tracking Number (AWB):</strong> ${awbCode}<br>
+    ${courierName ? `<strong>Courier:</strong> ${courierName}<br>` : ''}
+    <a href="${trackingUrl}" style="color: #7c3aed; font-weight: bold;">Track shipment →</a>
+  </p>
+  ` : ''}
+  ${orderDetails ? `<div style="margin: 16px 0; padding: 12px; background: #f5f5f5; border-radius: 8px;"><strong>Order details:</strong><pre style="margin: 0; white-space: pre-wrap;">${orderDetails}</pre></div>` : ''}
+  ${total != null ? `<p><strong>Total: ₹${Number(total).toLocaleString('en-IN')}</strong></p>` : ''}
+  <p>— Kurti Times Admin</p>
+</body>
+</html>
+`;
+
     // Admin first: Resend unverified domains only allow sending to account owner (admin).
-    // Customer may 403 until domain verified at resend.com/domains.
     const respAdmin = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -111,9 +135,10 @@ module.exports = async (req, res) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        ...payload,
+        from: `Kurti Times <${fromEmail}>`,
         to: [adminEmail],
-        subject: `[Admin] Order Confirmed - Kurti Times (${orderId || ''})`,
+        subject: `Order Received - Kurti Times (${orderId || ''})`,
+        html: adminHtml,
       }),
     });
     if (!respAdmin.ok) {
@@ -130,7 +155,7 @@ module.exports = async (req, res) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ ...payload, to: [customerEmail] }),
+        body: JSON.stringify({ ...customerPayload, to: [customerEmail] }),
       });
       if (!resp.ok) {
         const err = await resp.json();

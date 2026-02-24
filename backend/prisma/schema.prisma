@@ -64,6 +64,7 @@ model Order {
   paymentStatus     String?
   cashfreeOrderId   String?
   shiprocketOrderId String?
+  awbCode           String?    // Shiprocket AWB for tracking
   items             OrderItem[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt

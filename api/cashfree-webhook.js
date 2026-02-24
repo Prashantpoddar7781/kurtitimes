@@ -208,6 +208,7 @@ async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrd
         orderDetails,
         total: shipping.total,
         isCOD: false,
+        shippingAddress,
       }),
     });
   } catch (e) {

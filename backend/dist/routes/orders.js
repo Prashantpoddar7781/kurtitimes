@@ -62,7 +62,8 @@ router.post('/', async (req, res) => {
 // POST /api/orders/confirm - Create confirmed order (from payment success, no stock check)
 router.post('/confirm', async (req, res) => {
     try {
-        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode, paymentMethod: paymentMethodBody, payment_method: paymentMethodSnake } = req.body;
+        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode: awbCodeBody, paymentMethod: paymentMethodBody, payment_method: paymentMethodSnake } = req.body;
+        const awbCode = awbCodeBody ? String(awbCodeBody).trim() : null;
         const paymentMethod = paymentMethodBody || paymentMethodSnake;
         if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -116,6 +117,7 @@ router.post('/confirm', async (req, res) => {
                 paymentStatus: isCOD ? null : 'success',
                 cashfreeOrderId: cashfreeOrderId || null,
                 shiprocketOrderId: shiprocketOrderId ? String(shiprocketOrderId) : null,
+                awbCode: awbCode || null,
                 items: {
                     create: orderItems
                 }
@@ -138,17 +140,16 @@ router.post('/confirm', async (req, res) => {
             const totalLabel = isCOD ? 'Total (pay on delivery)' : 'Total paid';
             const trackingUrl = awbCode ? `https://shiprocket.in/shipment-tracking?awb=${encodeURIComponent(awbCode)}` : 'https://shiprocket.in/shipment-tracking';
             const orderIdStr = order.cashfreeOrderId || order.id;
-            const awbBlock = awbCode ? `<p style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;"><strong>Tracking Number (AWB):</strong> ${awbCode}<br><a href="${trackingUrl}" style="color:#7c3aed;font-weight:bold">Track your shipment</a></p>` : '';
-            const html = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#7c3aed">Order Confirmed - Kurti Times</h2><p>Dear ${order.customerName || 'Customer'},</p><p>Thank you for your order! ${paymentMsg}</p><p><strong>Order ID:</strong> ${orderIdStr}</p>${awbBlock}${orderDetailsStr ? `<div style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:8px"><strong>Order details:</strong><pre style="margin:0;white-space:pre-wrap">${orderDetailsStr}</pre></div>` : ''}<p><strong>${totalLabel}:</strong> ₹${Number(order.total).toLocaleString('en-IN')}</p><p>— Kurti Times</p></body></html>`;
-            const sendOne = async (to, subj) => {
-                const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ from: `Kurti Times <${fromEmail}>`, to: [to], subject: subj, html }) });
+            const awbBlock = awbCode ? `<p style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;"><strong>Tracking Number (AWB):</strong> ${awbCode}<br><a href="${trackingUrl}" style="color:#7c3aed;font-weight:bold">Track shipment</a></p>` : '';
+            const customerHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#7c3aed">Order Confirmed - Kurti Times</h2><p>Dear ${order.customerName || 'Customer'},</p><p>Thank you for your order! ${paymentMsg}</p><p><strong>Order ID:</strong> ${orderIdStr}</p>${awbBlock}${orderDetailsStr ? `<div style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:8px"><strong>Order details:</strong><pre style="margin:0;white-space:pre-wrap">${orderDetailsStr}</pre></div>` : ''}<p><strong>${totalLabel}:</strong> ₹${Number(order.total).toLocaleString('en-IN')}</p><p>— Kurti Times</p></body></html>`;
+            const adminHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#dc2626">New Order Received – Kurti Times</h2><p>A new order has been placed. Please process it.</p><p><strong>Order ID:</strong> ${orderIdStr}</p><p><strong>Customer:</strong> ${order.customerName || 'N/A'}</p><p><strong>Phone:</strong> ${order.customerPhone || 'N/A'}</p><p><strong>Email:</strong> ${order.customerEmail || 'N/A'}</p><p><strong>Shipping Address:</strong><br>${(order.shippingAddress || 'N/A').replace(/\n/g, '<br>')}</p><p><strong>Payment:</strong> ${isCOD ? 'COD (Collect on delivery)' : 'Prepaid'}</p>${awbBlock}${orderDetailsStr ? `<div style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:8px"><strong>Order details:</strong><pre style="margin:0;white-space:pre-wrap">${orderDetailsStr}</pre></div>` : ''}<p><strong>Total: ₹${Number(order.total).toLocaleString('en-IN')}</strong></p><p>— Kurti Times Admin</p></body></html>`;
+            const sendOne = async (to, subj, htmlBody) => {
+                const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ from: `Kurti Times <${fromEmail}>`, to: [to], subject: subj, html: htmlBody }) });
                 if (!r.ok) throw new Error(await r.text());
             };
-            // Admin first: Resend unverified domains only allow sending to account owner (admin).
-            // Customer send may 403 until domain is verified at resend.com/domains.
-            try { await sendOne(adminEmail, `[Admin] Order Confirmed - Kurti Times (${orderIdStr})`); } catch (e) { console.error('Resend admin email failed:', e.message); }
+            try { await sendOne(adminEmail, `Order Received - Kurti Times (${orderIdStr})`, adminHtml); } catch (e) { console.error('Resend admin email failed:', e.message); }
             if (customerEmail) {
-                try { await sendOne(customerEmail, `Order Confirmed - Kurti Times (${orderIdStr})`); } catch (e) { console.error('Resend customer email failed:', e.message); }
+                try { await sendOne(customerEmail, `Order Confirmed - Kurti Times (${orderIdStr})`, customerHtml); } catch (e) { console.error('Resend customer email failed:', e.message); }
             }
         }
         res.status(201).json({ ...order, _email: { attempted: !!apiKey } });
