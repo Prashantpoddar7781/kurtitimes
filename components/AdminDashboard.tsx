@@ -341,7 +341,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
             {/* Orders Tab */}
             {activeTab === 'orders' && (
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Orders Received</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Orders Received</h2>
+                  <button
+                    onClick={() => {
+                      setOrdersError(null);
+                      setOrdersLoading(true);
+                      api.get('/api/orders?limit=100')
+                        .then((res) => {
+                          const list = res.data?.orders ?? res.data;
+                          setOrders(Array.isArray(list) ? list : []);
+                        })
+                        .catch((err) => {
+                          setOrders([]);
+                          setOrdersError(err.response?.status === 401 ? 'Please log out and log in again as admin' : err.response?.data?.error || err.message || 'Failed to load');
+                        })
+                        .finally(() => setOrdersLoading(false));
+                    }}
+                    className="text-sm px-3 py-1.5 bg-brand-100 text-brand-800 rounded-md hover:bg-brand-200"
+                  >
+                    Refresh
+                  </button>
+                </div>
                 {ordersError && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-800">{ordersError}</p>

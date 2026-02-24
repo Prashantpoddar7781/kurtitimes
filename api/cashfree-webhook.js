@@ -184,28 +184,31 @@ async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrd
     console.error('Failed to save order:', e);
   }
 
-  // Send order confirmation via WhatsApp TO the customer FROM 9892794421 (via Twilio)
-  const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const baseUrl = host.startsWith('http') ? host : `https://${host}`;
-  try {
-    const orderDetails = (shipping.cartItems || [])
-      .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)
-      .join('\n');
-    await fetch(`${baseUrl}/api/send-whatsapp-order-confirmation`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: shipping.phone,
-        name: shipping.name,
-        orderId: cashfreeOrderId,
-        awbCode: shipmentResult?.awb_code,
-        courierName: shipmentResult?.courier_name,
-        orderDetails,
-        total: shipping.total,
-      }),
-    });
-  } catch (e) {
-    console.error('Failed to send WhatsApp to customer:', e);
+  // Send order confirmation email to customer
+  const customerEmail = shipping.email || (shipping.phone ? `${shipping.phone}@temp.com` : null);
+  if (customerEmail && !customerEmail.includes('@temp.com')) {
+    const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+    try {
+      const orderDetails = (shipping.cartItems || [])
+        .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)
+        .join('\n');
+      await fetch(`${baseUrl}/api/send-order-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: customerEmail,
+          name: shipping.name,
+          orderId: cashfreeOrderId,
+          awbCode: shipmentResult?.awb_code,
+          courierName: shipmentResult?.courier_name,
+          orderDetails,
+          total: shipping.total,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to send email:', e);
+    }
   }
 }
 

@@ -76,8 +76,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Handle return from Cashfree payment redirect - show success & notify admin via WhatsApp
-  // NOTE: Shipment + order save happen ONLY in webhook (api/cashfree-webhook.js) to avoid duplicates
+  // Handle return from Cashfree payment redirect - show success, save order (backup), notify admin via WhatsApp
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('order_id') || sessionStorage.getItem('cashfree_order_id');
@@ -96,8 +95,18 @@ const App: React.FC = () => {
           `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${item.price * item.quantity}`
         ).join('\n');
         const shippingAddress = `${data.addressLine1}${data.addressLine2 ? `, ${data.addressLine2}` : ''}, ${data.city}, ${data.state} - ${data.pincode}`;
-        // Notify admin (order + shipment created by webhook - check dashboard for AWB)
-        const msg = `*New Order - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*\n\n_Check admin dashboard for shipment/AWB details_`;
+        // Save order to backend (backup if webhook hasn't run yet – idempotent via cashfreeOrderId)
+        api.post('/api/orders/confirm', {
+          customerName: data.name,
+          customerPhone: data.phone,
+          customerEmail: data.email || null,
+          shippingAddress,
+          total: data.total,
+          items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price })),
+          cashfreeOrderId: orderId,
+        }).catch((e) => console.error('Order save backup:', e));
+        // Notify admin via WhatsApp
+        const msg = `*New Order - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*`;
         setWhatsappSent(true);
         window.open(`https://wa.me/919892794421?text=${encodeURIComponent(msg)}`, '_blank');
       }
@@ -218,19 +227,20 @@ const App: React.FC = () => {
     // Allow hardcoded admin credentials (ID and password)
     if (userId.trim() === '7624029175' && password === '7624029175') {
       try {
-        // Get token from backend using bypass (backend accepts 7624029175 as credentials)
         const res = await api.post('/api/auth/login', { email: '7624029175', password: '7624029175' });
         const token = res.data?.token;
         if (token) {
           localStorage.setItem('kurtiTimesAdminToken', token);
+          setIsAdminLoggedIn(true);
+          setIsAdminDashboardOpen(true);
+          setIsAuthenticated(true);
+          return true;
         }
       } catch (_) {
-        // Backend may not have bypass yet - still allow access, API calls may fail
+        // Backend unreachable - orders won't load
       }
-      setIsAdminLoggedIn(true);
-      setIsAdminDashboardOpen(true);
-      setIsAuthenticated(true);
-      return true;
+      alert('Could not connect to admin server. Check your internet and try again.');
+      return false;
     }
     // Try backend login with User ID as email (for other admins)
     try {
@@ -554,7 +564,7 @@ const App: React.FC = () => {
             </div>
             <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
             <p className="text-gray-600 mb-4">Thank you for your order. Order ID: {paymentSuccessOrderId}</p>
-            <p className="text-sm text-gray-500 mb-4">Order confirmation has been sent to your WhatsApp. Check &quot;My Orders&quot; for tracking.</p>
+            <p className="text-sm text-gray-500 mb-4">Order confirmation has been sent to your email. Check &quot;My Orders&quot; for tracking.</p>
             <button
               onClick={() => { setPaymentSuccessOrderId(null); handleNavigation('home'); }}
               className="w-full px-6 py-3 bg-brand-700 text-white rounded-lg font-medium hover:bg-brand-800 transition-colors"
