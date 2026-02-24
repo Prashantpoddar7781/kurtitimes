@@ -71,7 +71,7 @@ router.post('/confirm', async (req, res) => {
             const existing = await prisma.order.findFirst({
                 where: { cashfreeOrderId: String(cashfreeOrderId) }
             });
-            if (existing) return res.status(201).json(existing);
+            if (existing) return res.status(201).json({ ...existing, _email: { earlyReturn: true, reason: 'duplicate' } });
         }
         let fallbackProduct = null;
         const orderItems = [];
@@ -151,7 +151,7 @@ router.post('/confirm', async (req, res) => {
                 console.error('Resend email failed:', e.message);
             }
         }
-        res.status(201).json(order);
+        res.status(201).json({ ...order, _email: { attempted: !!apiKey } });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

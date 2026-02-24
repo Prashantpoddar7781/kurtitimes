@@ -126,7 +126,10 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         weight: Math.max(0.5, cartItems.length * 0.3),
       };
       const shipment = await createShipment(shipmentData);
-      await api.post('/api/orders/confirm', {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:handleCOD',message:'Before confirm',data:{type:'COD'},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const confirmRes = await api.post('/api/orders/confirm', {
         customerName: name,
         customerPhone: phone,
         customerEmail: email || null,
@@ -142,10 +145,18 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         shiprocketOrderId: String(shipment.order_id || shipment.shipment_id),
         awbCode: shipment.awb_code || null,
       });
+      // #region agent log
+      const confirmData = (confirmRes as any)?.data;
+      fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:handleCOD',message:'Confirm response',data:{status:confirmRes.status,_email:confirmData?._email},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const orderDetails = cartItems.map((item) =>
         `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${(item.price * item.quantity).toLocaleString('en-IN')}`
       ).join('\n');
-      fetch(`${window.location.origin}/api/send-order-confirmation`, {
+      const sendEmailUrl = `${window.location.origin}/api/send-order-confirmation`;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:handleCOD',message:'Before Vercel send-order-confirmation',data:{sendEmailUrl},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      fetch(sendEmailUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,6 +169,10 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           total,
           isCOD: true,
         }),
+      }).then(async (r) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:handleCOD',message:'Vercel send-order-confirmation response',data:{status:r.status,ok:r.ok},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
       }).catch(() => {});
       setOrderSuccessType('cod');
       setStep('success');
@@ -272,7 +287,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
             const orderDetailsForEmail = cartItems.map((item) =>
               `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${(item.price * item.quantity).toLocaleString('en-IN')}`
             ).join('\n');
-            fetch(`${window.location.origin}/api/send-order-confirmation`, {
+            const sendEmailUrlPrepaid = `${window.location.origin}/api/send-order-confirmation`;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:onSuccess',message:'Prepaid before send-order-confirmation',data:{sendEmailUrl:sendEmailUrlPrepaid},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            fetch(sendEmailUrlPrepaid, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -285,6 +304,10 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                 total,
                 isCOD: false,
               }),
+            }).then((r) => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CartModal.tsx:onSuccess',message:'Prepaid send-order-confirmation response',data:{status:r.status,ok:r.ok},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
+              // #endregion
             }).catch(() => {});
             
             setOrderSuccessType('online');

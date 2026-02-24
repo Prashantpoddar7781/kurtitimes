@@ -96,6 +96,9 @@ const App: React.FC = () => {
         ).join('\n');
         const shippingAddress = `${data.addressLine1}${data.addressLine2 ? `, ${data.addressLine2}` : ''}, ${data.city}, ${data.state} - ${data.pincode}`;
         // Save order to backend (backup if webhook hasn't run yet – idempotent via cashfreeOrderId)
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:payment-success',message:'Before backup confirm',data:{orderId},timestamp:Date.now(),hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
         api.post('/api/orders/confirm', {
           customerName: data.name,
           customerPhone: data.phone,
@@ -104,9 +107,16 @@ const App: React.FC = () => {
           total: data.total,
           items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price, size: c.selectedSize || null })),
           cashfreeOrderId: orderId,
+        }).then((r: any) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:payment-success',message:'Backup confirm response',data:{_email:(r?.data)?._email},timestamp:Date.now(),hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
         }).catch((e) => console.error('Order save backup:', e));
-        // Send order confirmation email (backup if webhook hasn't sent yet - admin always gets copy)
-        fetch(`${window.location.origin}/api/send-order-confirmation`, {
+        const sendEmailUrlApp = `${window.location.origin}/api/send-order-confirmation`;
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:payment-success',message:'Before backup send-order-confirmation',data:{sendEmailUrl:sendEmailUrlApp},timestamp:Date.now(),hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        fetch(sendEmailUrlApp, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -119,6 +129,10 @@ const App: React.FC = () => {
             total: data.total,
             isCOD: false,
           }),
+        }).then((r) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f1d3ee6a-50cb-46eb-bea8-9743c3ab5e5d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:payment-success',message:'Backup send-order-confirmation response',data:{status:r.status,ok:r.ok},timestamp:Date.now(),hypothesisId:'J'})}).catch(()=>{});
+          // #endregion
         }).catch(() => {});
         // Notify admin via WhatsApp
         const msg = `*New Order - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*`;
