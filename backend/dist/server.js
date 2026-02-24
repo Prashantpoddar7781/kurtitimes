@@ -40,6 +40,37 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// Email test - no auth (add RESEND_API_KEY in Railway)
+app.get('/api/email-test', async (req, res) => {
+    try {
+        const apiKey = process.env.RESEND_API_KEY;
+        const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+        const adminEmail = process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com';
+        if (!apiKey) {
+            return res.json({ ok: false, error: 'RESEND_API_KEY not set in Railway. Add it in Project > Variables.' });
+        }
+        if (req.query.send === '1' || req.query.send === 'true') {
+            const r = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    from: `Kurti Times <${fromEmail}>`,
+                    to: [adminEmail],
+                    subject: 'Backend email test – Kurti Times',
+                    html: '<p>If you got this, backend email is working.</p>',
+                }),
+            });
+            if (!r.ok) {
+                const err = await r.text();
+                return res.json({ ok: false, error: 'Resend rejected: ' + err });
+            }
+            return res.json({ ok: true, message: `Test email sent to ${adminEmail}` });
+        }
+        return res.json({ ok: true, configured: true, fromEmail, adminEmail, message: 'Add ?send=1 to send test email' });
+    } catch (e) {
+        return res.json({ ok: false, error: e.message });
+    }
+});
 // Root endpoint for testing
 app.get('/', (req, res) => {
     console.log('Root endpoint requested');
