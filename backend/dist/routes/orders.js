@@ -62,7 +62,7 @@ router.post('/', async (req, res) => {
 // POST /api/orders/confirm - Create confirmed order (from payment success, no stock check)
 router.post('/confirm', async (req, res) => {
     try {
-        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode } = req.body;
+        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode, paymentMethod } = req.body;
         if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
@@ -100,6 +100,7 @@ router.post('/confirm', async (req, res) => {
             });
         }
         if (orderItems.length === 0) return res.status(400).json({ error: 'No valid items' });
+        const isCOD = (paymentMethod || '').toUpperCase() === 'COD';
         const order = await prisma.order.create({
             data: {
                 customerName,
@@ -107,9 +108,10 @@ router.post('/confirm', async (req, res) => {
                 customerEmail: customerEmail || null,
                 shippingAddress: shippingAddress || null,
                 total: total ?? orderTotal,
-                status: 'PAID',
+                status: isCOD ? 'COD_PENDING' : 'PAID',
+                paymentMethod: isCOD ? 'COD' : 'PREPAID',
                 paymentId: paymentId || null,
-                paymentStatus: 'success',
+                paymentStatus: isCOD ? null : 'success',
                 cashfreeOrderId: cashfreeOrderId || null,
                 shiprocketOrderId: shiprocketOrderId ? String(shiprocketOrderId) : null,
                 items: {

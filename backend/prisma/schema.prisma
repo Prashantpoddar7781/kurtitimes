@@ -21,6 +21,7 @@ enum Category {
 enum OrderStatus {
   PENDING
   PAID
+  COD_PENDING
   PROCESSING
   SHIPPED
   DELIVERED
@@ -58,6 +59,7 @@ model Order {
   shippingAddress   String?
   total             Float
   status            OrderStatus @default(PENDING)
+  paymentMethod     String?     // PREPAID, COD
   paymentId         String?
   paymentStatus     String?
   cashfreeOrderId   String?

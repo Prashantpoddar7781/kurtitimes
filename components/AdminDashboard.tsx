@@ -5,6 +5,8 @@ import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
 import api, { transformProduct, transformProductForBackend } from '../utils/api';
 
+const SHIPROCKET_COD_SETTLEMENT_URL = 'https://app.shiprocket.in/reports/cod-remittance';
+
 interface Order {
   id: string;
   customerName: string;
@@ -13,6 +15,7 @@ interface Order {
   shippingAddress?: string | null;
   total: number;
   status: string;
+  paymentMethod?: string | null;
   cashfreeOrderId?: string | null;
   shiprocketOrderId?: string | null;
   createdAt: string;
@@ -414,14 +417,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                                 <td className="px-4 py-3 text-sm text-gray-600">{order.customerPhone}</td>
                                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{CURRENCY_SYMBOL}{order.total.toLocaleString('en-IN')}</td>
                                 <td className="px-4 py-3">
-                                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${
-                                    order.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                                    order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                                    order.status === 'DELIVERED' ? 'bg-purple-100 text-purple-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {order.status}
-                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${
+                                      order.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                                      order.status === 'COD_PENDING' ? 'bg-amber-100 text-amber-800' :
+                                      order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                                      order.status === 'DELIVERED' ? 'bg-purple-100 text-purple-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {order.status}
+                                    </span>
+                                    {order.paymentMethod === 'COD' && (
+                                      <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800">COD</span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                               {expandedOrderId === order.id && (
@@ -430,6 +439,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                                     <div className="space-y-2">
                                       {order.shippingAddress && (
                                         <p className="text-xs text-gray-600"><strong>Shipping:</strong> {order.shippingAddress}</p>
+                                      )}
+                                      {order.paymentMethod === 'COD' && (
+                                        <p className="text-sm">
+                                          <a
+                                            href={SHIPROCKET_COD_SETTLEMENT_URL}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-brand-600 hover:text-brand-800 font-medium underline"
+                                          >
+                                            Settle COD in Shiprocket →
+                                          </a>
+                                          {' '}Manage cash collection and remittance for this order.
+                                        </p>
                                       )}
                                       <div className="text-sm">
                                         <strong className="block mb-2">Order items:</strong>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, CreditCard, CheckCircle, Truck } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ArrowLeft, MessageCircle, CreditCard, CheckCircle, Truck, Banknote } from 'lucide-react';
 import { CartItem } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import { initiatePayment } from '../services/cashfreeService';
 import { calculateShipping, validatePincode, ShippingAddress } from '../services/shippingService';
 import { createShipment } from '../services/shiprocketService';
+import api from '../utils/api';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
   const [estimatedDays, setEstimatedDays] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
+  const [orderSuccessType, setOrderSuccessType] = useState<'online' | 'cod'>('online');
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -43,6 +46,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
       setIsProcessing(false);
       setShippingCost(0);
       setEstimatedDays(0);
+      setPaymentMethod('online');
     }
   }, [isOpen]);
 
@@ -64,6 +68,87 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
   const total = subtotal + shippingCost;
   // Cashfree expects amount in rupees (e.g. 543 for ₹543), not paise
   const amountInRupees = Math.round(total * 100) / 100;
+
+  const handleCOD = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (amountInRupees < 1) {
+      alert('Minimum order amount is ₹1.00');
+      return;
+    }
+    if (!addressLine1 || !city || !state || !pincode) {
+      alert('Please fill in all shipping address fields');
+      return;
+    }
+    if (!validatePincode(pincode)) {
+      alert('Please enter a valid 6-digit pincode');
+      return;
+    }
+    setIsProcessing(true);
+    const shippingAddr = `${addressLine1}${addressLine2 ? ', ' + addressLine2 : ''}, ${city}, ${state} - ${pincode}`;
+    const orderId = `KT-COD-${Date.now()}`;
+    try {
+      const shipmentData = {
+        order_id: orderId,
+        order_date: new Date().toISOString(),
+        pickup_location: 'warehouse',
+        billing_customer_name: name.split(' ')[0] || name,
+        billing_last_name: name.split(' ').slice(1).join(' ') || '',
+        billing_address: addressLine1,
+        billing_address_2: addressLine2 || '',
+        billing_city: city,
+        billing_pincode: pincode,
+        billing_state: state,
+        billing_country: 'India',
+        billing_email: email || phone + '@temp.com',
+        billing_phone: phone,
+        shipping_is_billing: true,
+        shipping_customer_name: name.split(' ')[0] || name,
+        shipping_last_name: name.split(' ').slice(1).join(' ') || '',
+        shipping_address: addressLine1,
+        shipping_address_2: addressLine2 || '',
+        shipping_city: city,
+        shipping_pincode: pincode,
+        shipping_state: state,
+        shipping_country: 'India',
+        shipping_email: email || phone + '@temp.com',
+        shipping_phone: phone,
+        order_items: cartItems.map((item) => ({
+          name: item.name,
+          sku: `SKU-${item.id}-${item.selectedSize || 'M'}`,
+          units: item.quantity,
+          selling_price: item.price,
+        })),
+        payment_method: 'COD',
+        sub_total: subtotal,
+        length: 20,
+        breadth: 15,
+        height: 5,
+        weight: Math.max(0.5, cartItems.length * 0.3),
+      };
+      const shipment = await createShipment(shipmentData);
+      await api.post('/api/orders/confirm', {
+        customerName: name,
+        customerPhone: phone,
+        customerEmail: email || null,
+        shippingAddress: shippingAddr,
+        total,
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          size: item.selectedSize || null,
+        })),
+        paymentMethod: 'COD',
+        shiprocketOrderId: String(shipment.order_id || shipment.shipment_id),
+        awbCode: shipment.awb_code || null,
+      });
+      setOrderSuccessType('cod');
+      setStep('success');
+    } catch (err: any) {
+      setIsProcessing(false);
+      alert(err?.response?.data?.error || err?.message || 'COD order failed. Please try again.');
+    }
+  };
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,6 +251,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
             const shipment = await createShipment(shipmentData);
             
+            setOrderSuccessType('online');
             setStep('success');
             
             // Send order confirmation via WhatsApp with shipping address and tracking
@@ -190,6 +276,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
           } catch (shipError: any) {
             // If Shiprocket fails, still show success but log error
             console.error('Shiprocket error:', shipError);
+            setOrderSuccessType('online');
             setStep('success');
             
             // Send order confirmation without shipment details
@@ -315,7 +402,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                 )}
               </>
             ) : step === 'checkout' ? (
-              <form id="checkout-form" onSubmit={handlePayment} className="space-y-6">
+              <form id="checkout-form" onSubmit={(e) => paymentMethod === 'cod' ? handleCOD(e) : handlePayment(e)} className="space-y-6">
                  <div className="bg-brand-50 p-4 rounded-lg mb-6">
                     <h3 className="font-medium text-brand-900 mb-2">Order Summary</h3>
                     <div className="text-sm text-gray-600 space-y-1">
@@ -464,21 +551,50 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                    </div>
                  </div>
 
+                 {/* Payment Method Selection */}
+                 <div className="border-t border-gray-200 pt-6 mt-6">
+                   <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h3>
+                   <div className="space-y-3">
+                     <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'online' ? 'border-brand-600 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                       <input type="radio" name="paymentMethod" value="online" checked={paymentMethod === 'online'} onChange={() => setPaymentMethod('online')} className="text-brand-600" />
+                       <CreditCard className="h-5 w-5 text-brand-600" />
+                       <div>
+                         <span className="font-medium text-gray-900">Online Payment</span>
+                         <p className="text-xs text-gray-500">Pay securely via UPI, Card, Net Banking (Cashfree)</p>
+                       </div>
+                     </label>
+                     <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-brand-600 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                       <input type="radio" name="paymentMethod" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="text-brand-600" />
+                       <Banknote className="h-5 w-5 text-brand-600" />
+                       <div>
+                         <span className="font-medium text-gray-900">Cash on Delivery (COD)</span>
+                         <p className="text-xs text-gray-500">Pay when your order is delivered</p>
+                       </div>
+                     </label>
+                   </div>
+                 </div>
+
+                 {paymentMethod === 'online' && (
                  <div className="bg-blue-50 p-3 rounded-md flex items-start gap-3">
                    <CreditCard className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                    <p className="text-sm text-blue-800">
                      Secure payment powered by Cashfree. All transactions are encrypted and secure.
                    </p>
                  </div>
+                 )}
               </form>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="bg-green-50 p-4 rounded-full mb-4">
                   <CheckCircle className="h-12 w-12 text-green-600" />
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h3>
+                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">
+                  {orderSuccessType === 'cod' ? 'Order Placed!' : 'Payment Successful!'}
+                </h3>
                 <p className="text-gray-600 mb-4">Thank you for your order.</p>
-                <p className="text-sm text-gray-500">Order confirmation has been sent to WhatsApp.</p>
+                <p className="text-sm text-gray-500">
+                  {orderSuccessType === 'cod' ? 'Pay the amount when your order is delivered.' : 'Order confirmation has been sent to WhatsApp.'}
+                </p>
                 <button
                   onClick={() => {
                     onClose();
@@ -519,6 +635,11 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       Processing...
+                    </>
+                  ) : paymentMethod === 'cod' ? (
+                    <>
+                      <Banknote className="h-5 w-5" />
+                      Place Order (COD) {CURRENCY_SYMBOL}{total.toLocaleString('en-IN')}
                     </>
                   ) : (
                     <>
