@@ -268,6 +268,25 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
 
             const shipment = await createShipment(shipmentData);
             
+            // Send order confirmation email (client + admin, with AWB)
+            const orderDetailsForEmail = cartItems.map((item) =>
+              `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${(item.price * item.quantity).toLocaleString('en-IN')}`
+            ).join('\n');
+            fetch(`${window.location.origin}/api/send-order-confirmation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: email && !email.includes('@temp.com') ? email : null,
+                name,
+                orderId: orderId || 'N/A',
+                awbCode: shipment.awb_code || null,
+                courierName: shipment.courier_name || null,
+                orderDetails: orderDetailsForEmail,
+                total,
+                isCOD: false,
+              }),
+            }).catch(() => {});
+            
             setOrderSuccessType('online');
             setStep('success');
             
