@@ -40,11 +40,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onProdu
           </span>
         </div>
 
-        {/* Add Button - Compact for grid layout */}
+        {/* Add Button - Opens product detail to select size before adding */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onAddToCart(product);
+            onProductClick?.(product);
           }}
           className="mt-auto pt-3 w-full text-brand-700 text-[11px] font-bold uppercase hover:text-brand-900 transition-colors flex items-center justify-center gap-1 border-t border-gray-50"
         >

@@ -427,7 +427,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                                     }`}>
                                       {order.status}
                                     </span>
-                                    {order.paymentMethod === 'COD' && (
+                                    {(order.paymentMethod === 'COD' || order.status === 'COD_PENDING') && (
                                       <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800">COD</span>
                                     )}
                                   </div>
@@ -440,7 +440,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                                       {order.shippingAddress && (
                                         <p className="text-xs text-gray-600"><strong>Shipping:</strong> {order.shippingAddress}</p>
                                       )}
-                                      {order.paymentMethod === 'COD' && (
+                                      {(order.paymentMethod === 'COD' || order.status === 'COD_PENDING') && (
                                         <p className="text-sm">
                                           <a
                                             href={SHIPROCKET_COD_SETTLEMENT_URL}

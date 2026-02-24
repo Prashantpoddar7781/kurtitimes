@@ -62,7 +62,8 @@ router.post('/', async (req, res) => {
 // POST /api/orders/confirm - Create confirmed order (from payment success, no stock check)
 router.post('/confirm', async (req, res) => {
     try {
-        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode, paymentMethod } = req.body;
+        const { customerName, customerPhone, customerEmail, shippingAddress, total, items, cashfreeOrderId, paymentId, shiprocketOrderId, awbCode, paymentMethod: paymentMethodBody, payment_method: paymentMethodSnake } = req.body;
+        const paymentMethod = paymentMethodBody || paymentMethodSnake;
         if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
@@ -91,7 +92,8 @@ router.post('/confirm', async (req, res) => {
             }
             if (!productId) continue;
             orderTotal += price * qty;
-            const size = item.size && String(item.size).trim() ? String(item.size).trim() : null;
+            const sizeVal = item.size ?? item.selectedSize;
+            const size = sizeVal && String(sizeVal).trim() ? String(sizeVal).trim() : null;
             orderItems.push({
                 productId,
                 quantity: qty,
