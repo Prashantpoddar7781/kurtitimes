@@ -32,7 +32,29 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, name, orderId, awbCode, courierName, orderDetails, total, isCOD } = req.body;
+    const { to, name, orderId, awbCode, courierName, orderDetails, total, isCOD, test } = req.body;
+
+    // Test mode: POST { "test": true } to send a test email to admin
+    if (test === true) {
+      const adminEmail = process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com';
+      const fromEmail = process.env.FROM_EMAIL || 'orders@kurtitimes.com';
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          from: `Kurti Times <${fromEmail}>`,
+          to: [adminEmail],
+          subject: 'Test – Order email is working',
+          html: '<p>If you received this, order confirmation emails are configured correctly.</p>',
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        console.error('Resend test error:', err);
+        return res.status(500).json({ error: 'Resend rejected', details: err });
+      }
+      return res.status(200).json({ sent: true, message: `Test email sent to ${adminEmail}. Check Resend dashboard and your inbox.` });
+    }
     const adminEmail = process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com';
     const customerEmail = to && !String(to).includes('@temp.com') ? to : null;
     if (!customerEmail && !adminEmail) {
