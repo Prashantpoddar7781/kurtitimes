@@ -23,12 +23,14 @@ Order confirmation emails are sent to customers when they place an order (via we
 3. Create an API key
 4. Add to **Vercel** environment variables:
    - `RESEND_API_KEY` – your Resend API key
-   - `FROM_EMAIL` (optional) – e.g. `orders@kurtitimes.com` – must be from a verified domain
+   - `FROM_EMAIL` – e.g. `orders@kurtitimes.com` or `onboarding@resend.dev` (Resend test) – **must be from a verified domain**
+   - `SEND_EMAIL_BASE_URL` (optional) – your production URL, e.g. `https://kurtitimes.vercel.app` – used by webhook to call send-order-confirmation
 
 Without `RESEND_API_KEY`, order placement still works; emails are skipped.
 
 ## Troubleshooting
 
-- **Emails not received**: Ensure `FROM_EMAIL` is from a domain you've verified in Resend. On Resend's free tier, you must verify your domain before sending.
+- **Emails not received**: Ensure `FROM_EMAIL` is from a domain you've verified in Resend. On Resend's free tier, you must verify your domain. Use `onboarding@resend.dev` only for testing.
 - **No email sent**: Emails are only sent when the customer provides a real email at checkout. If they skip the email field, we use `phone@temp.com` which is not sent.
+- **Webhook emails fail**: Set `SEND_EMAIL_BASE_URL` in Vercel to your production URL (e.g. `https://kurtitimes.vercel.app`). Emails are also sent from the client as backup when the customer returns from payment.
 - **Orders not in Admin**: Orders are saved even when Shiprocket fails. Redeploy after changes. Ensure `VITE_API_URL` points to your Railway backend and CORS allows your Vercel domain.

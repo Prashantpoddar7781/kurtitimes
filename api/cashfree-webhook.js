@@ -187,8 +187,13 @@ async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrd
   // Send order confirmation email to customer
   const customerEmail = shipping.email || (shipping.phone ? `${shipping.phone}@temp.com` : null);
   if (customerEmail && !customerEmail.includes('@temp.com')) {
-    const host = (process.env.VERCEL_URL || process.env.FRONTEND_URL || 'kurtitimes.vercel.app').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+    let baseUrl = process.env.SEND_EMAIL_BASE_URL || process.env.FRONTEND_URL || process.env.VERCEL_URL;
+    if (baseUrl) {
+      baseUrl = baseUrl.replace(/\/$/, '');
+      if (!baseUrl.startsWith('http')) baseUrl = `https://${baseUrl}`;
+    } else {
+      baseUrl = 'https://kurtitimes.vercel.app';
+    }
     try {
       const orderDetails = (shipping.cartItems || [])
         .map((c) => `• ${c.name} (x${c.quantity}) - ₹${(c.price * c.quantity).toLocaleString('en-IN')}`)

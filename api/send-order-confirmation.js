@@ -21,13 +21,15 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, name, orderId, awbCode, courierName, orderDetails, total } = req.body;
+    const { to, name, orderId, awbCode, courierName, orderDetails, total, isCOD } = req.body;
     if (!to) {
       return res.status(400).json({ error: 'Recipient email required' });
     }
 
     const fromEmail = process.env.FROM_EMAIL || 'orders@kurtitimes.com';
     const trackingUrl = 'https://www.shiprocket.in/shipment-tracking';
+    const paymentMsg = isCOD ? 'Pay the amount when your order is delivered.' : "We've received your payment successfully.";
+    const totalLabel = isCOD ? 'Total (pay on delivery)' : 'Total paid';
 
     const html = `
 <!DOCTYPE html>
@@ -36,7 +38,7 @@ module.exports = async (req, res) => {
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <h2 style="color: #7c3aed;">Order Confirmed - Kurti Times</h2>
   <p>Dear ${name || 'Customer'},</p>
-  <p>Thank you for your order! We've received your payment successfully.</p>
+  <p>Thank you for your order! ${paymentMsg}</p>
   
   <p><strong>Order ID:</strong> ${orderId || 'N/A'}</p>
   ${awbCode ? `<p><strong>Shipment ID / AWB:</strong> ${awbCode}</p>` : ''}
@@ -48,7 +50,7 @@ module.exports = async (req, res) => {
   ` : ''}
   
   ${orderDetails ? `<div style="margin: 16px 0; padding: 12px; background: #f5f5f5; border-radius: 8px;"><strong>Order details:</strong><pre style="margin: 0; white-space: pre-wrap;">${orderDetails}</pre></div>` : ''}
-  ${total != null ? `<p><strong>Total paid:</strong> ₹${Number(total).toLocaleString('en-IN')}</p>` : ''}
+  ${total != null ? `<p><strong>${totalLabel}:</strong> ₹${Number(total).toLocaleString('en-IN')}</p>` : ''}
   
   <p>We'll process your order shortly. For any queries, contact us on WhatsApp.</p>
   <p>— Kurti Times</p>

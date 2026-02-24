@@ -142,6 +142,25 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
         shiprocketOrderId: String(shipment.order_id || shipment.shipment_id),
         awbCode: shipment.awb_code || null,
       });
+      if (email && !email.includes('@temp.com')) {
+        const orderDetails = cartItems.map((item) =>
+          `• ${item.name}${item.selectedSize ? ` (Size: ${item.selectedSize})` : ''} (x${item.quantity}) - ${CURRENCY_SYMBOL}${(item.price * item.quantity).toLocaleString('en-IN')}`
+        ).join('\n');
+        fetch(`${window.location.origin}/api/send-order-confirmation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: email,
+            name,
+            orderId,
+            awbCode: shipment.awb_code || null,
+            courierName: shipment.courier_name || null,
+            orderDetails,
+            total,
+            isCOD: true,
+          }),
+        }).catch(() => {});
+      }
       setOrderSuccessType('cod');
       setStep('success');
     } catch (err: any) {

@@ -105,6 +105,23 @@ const App: React.FC = () => {
           items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price, size: c.selectedSize || null })),
           cashfreeOrderId: orderId,
         }).catch((e) => console.error('Order save backup:', e));
+        // Send order confirmation email (backup if webhook hasn't sent yet)
+        if (data.email && !String(data.email).includes('@temp.com')) {
+          fetch(`${window.location.origin}/api/send-order-confirmation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: data.email,
+              name: data.name,
+              orderId: orderId || 'N/A',
+              awbCode: null,
+              courierName: null,
+              orderDetails,
+              total: data.total,
+              isCOD: false,
+            }),
+          }).catch(() => {});
+        }
         // Notify admin via WhatsApp
         const msg = `*New Order - Kurti Times* ✅\n\n*Order ID:* ${orderId}\n\n*Customer:* ${data.name}\n*Phone:* ${data.phone}\n*Shipping:* ${shippingAddress}\n\n*Order:*\n${orderDetails}\n\n*Total: ${CURRENCY_SYMBOL}${data.total.toLocaleString('en-IN')}*`;
         setWhatsappSent(true);
