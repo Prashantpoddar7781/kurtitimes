@@ -128,25 +128,28 @@ router.post('/confirm', async (req, res) => {
                 }
             }
         });
-        const emailBaseUrl = process.env.FRONTEND_URL || process.env.SEND_EMAIL_BASE_URL || 'https://kurtitimes.vercel.app';
-        const orderDetailsStr = (order.items || []).map((i) => `• ${i.product?.name || 'Product'}${i.size ? ` (Size: ${i.size})` : ''} (x${i.quantity}) - ₹${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n');
-        try {
-            await fetch(`${emailBaseUrl.replace(/\/$/, '')}/api/send-order-confirmation`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: order.customerEmail && !String(order.customerEmail).includes('@temp.com') ? order.customerEmail : null,
-                    name: order.customerName,
-                    orderId: order.cashfreeOrderId || order.id,
-                    awbCode: awbCode || null,
-                    courierName: null,
-                    orderDetails: orderDetailsStr,
-                    total: order.total,
-                    isCOD,
-                }),
-            });
-        } catch (e) {
-            console.error('Failed to send order confirmation email:', e);
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey) {
+            const orderDetailsStr = (order.items || []).map((i) => `• ${i.product?.name || 'Product'}${i.size ? ` (Size: ${i.size})` : ''} (x${i.quantity}) - ₹${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n');
+            const adminEmail = process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com';
+            const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+            const customerEmail = order.customerEmail && !String(order.customerEmail).includes('@temp.com') ? order.customerEmail : null;
+            const paymentMsg = isCOD ? 'Pay the amount when your order is delivered.' : "We've received your payment successfully.";
+            const totalLabel = isCOD ? 'Total (pay on delivery)' : 'Total paid';
+            const trackingUrl = awbCode ? `https://shiprocket.in/shipment-tracking?awb=${encodeURIComponent(awbCode)}` : 'https://shiprocket.in/shipment-tracking';
+            const orderIdStr = order.cashfreeOrderId || order.id;
+            const awbBlock = awbCode ? `<p style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;"><strong>Tracking Number (AWB):</strong> ${awbCode}<br><a href="${trackingUrl}" style="color:#7c3aed;font-weight:bold">Track your shipment</a></p>` : '';
+            const html = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#7c3aed">Order Confirmed - Kurti Times</h2><p>Dear ${order.customerName || 'Customer'},</p><p>Thank you for your order! ${paymentMsg}</p><p><strong>Order ID:</strong> ${orderIdStr}</p>${awbBlock}${orderDetailsStr ? `<div style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:8px"><strong>Order details:</strong><pre style="margin:0;white-space:pre-wrap">${orderDetailsStr}</pre></div>` : ''}<p><strong>${totalLabel}:</strong> ₹${Number(order.total).toLocaleString('en-IN')}</p><p>— Kurti Times</p></body></html>`;
+            const sendOne = async (to, subj) => {
+                const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ from: `Kurti Times <${fromEmail}>`, to: [to], subject: subj, html }) });
+                if (!r.ok) throw new Error(await r.text());
+            };
+            try {
+                if (customerEmail) await sendOne(customerEmail, `Order Confirmed - Kurti Times (${orderIdStr})`);
+                await sendOne(adminEmail, `[Admin] Order Confirmed - Kurti Times (${orderIdStr})`);
+            } catch (e) {
+                console.error('Resend email failed:', e.message);
+            }
         }
         res.status(201).json(order);
     }
