@@ -3,11 +3,22 @@
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // GET: Diagnostic - check if email is configured (does not expose secrets)
+  if (req.method === 'GET') {
+    const hasKey = !!process.env.RESEND_API_KEY;
+    return res.status(200).json({
+      configured: hasKey,
+      fromEmail: process.env.FROM_EMAIL ? 'set' : 'not set',
+      adminEmail: process.env.ADMIN_EMAIL || 'kurtitimes@gmail.com (default)',
+      message: hasKey ? 'Email is configured. Place an order to test.' : 'RESEND_API_KEY is not set in Vercel. Add it in Project Settings > Environment Variables.',
+    });
   }
 
   if (req.method !== 'POST') {
@@ -16,8 +27,8 @@ module.exports = async (req, res) => {
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn('RESEND_API_KEY not set - skipping email');
-    return res.status(200).json({ sent: false, reason: 'Email not configured' });
+    console.warn('RESEND_API_KEY not set - add it in Vercel Environment Variables');
+    return res.status(503).json({ sent: false, reason: 'RESEND_API_KEY not configured. Add it in Vercel: Project Settings > Environment Variables.' });
   }
 
   try {
