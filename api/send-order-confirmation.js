@@ -102,24 +102,8 @@ module.exports = async (req, res) => {
       html,
     };
 
-    // Send to customer (if they have real email)
-    if (customerEmail) {
-      const resp = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({ ...payload, to: [customerEmail] }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json();
-        console.error('Resend customer email error:', err);
-        return res.status(500).json({ error: 'Failed to send customer email', details: err });
-      }
-    }
-
-    // Always send copy to admin
+    // Admin first: Resend unverified domains only allow sending to account owner (admin).
+    // Customer may 403 until domain verified at resend.com/domains.
     const respAdmin = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -136,6 +120,23 @@ module.exports = async (req, res) => {
       const err = await respAdmin.json();
       console.error('Resend admin email error:', err);
       return res.status(500).json({ error: 'Failed to send admin email', details: err });
+    }
+
+    // Try customer (may 403 if domain not verified)
+    if (customerEmail) {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ ...payload, to: [customerEmail] }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        console.error('Resend customer email error:', err);
+        // Admin already received; return success
+      }
     }
 
     return res.status(200).json({ sent: true });

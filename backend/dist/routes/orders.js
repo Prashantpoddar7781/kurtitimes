@@ -144,11 +144,11 @@ router.post('/confirm', async (req, res) => {
                 const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ from: `Kurti Times <${fromEmail}>`, to: [to], subject: subj, html }) });
                 if (!r.ok) throw new Error(await r.text());
             };
-            try {
-                if (customerEmail) await sendOne(customerEmail, `Order Confirmed - Kurti Times (${orderIdStr})`);
-                await sendOne(adminEmail, `[Admin] Order Confirmed - Kurti Times (${orderIdStr})`);
-            } catch (e) {
-                console.error('Resend email failed:', e.message);
+            // Admin first: Resend unverified domains only allow sending to account owner (admin).
+            // Customer send may 403 until domain is verified at resend.com/domains.
+            try { await sendOne(adminEmail, `[Admin] Order Confirmed - Kurti Times (${orderIdStr})`); } catch (e) { console.error('Resend admin email failed:', e.message); }
+            if (customerEmail) {
+                try { await sendOne(customerEmail, `Order Confirmed - Kurti Times (${orderIdStr})`); } catch (e) { console.error('Resend customer email failed:', e.message); }
             }
         }
         res.status(201).json({ ...order, _email: { attempted: !!apiKey } });

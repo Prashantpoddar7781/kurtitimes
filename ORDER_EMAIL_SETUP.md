@@ -34,8 +34,9 @@ Order confirmation emails are sent to customers when they place an order (via we
 
 ## Troubleshooting
 
+- **Admin gets emails, customer doesn't**: Resend's unverified domain allows sending only to the account owner (ADMIN_EMAIL). To send to customers, verify a domain at [resend.com/domains](https://resend.com/domains) and set `FROM_EMAIL` to `orders@yourdomain.com`. Until then, admin always receives order copies.
 - **No emails in Resend dashboard**: Check config: visit `https://YOUR-SITE.vercel.app/api/send-order-confirmation` (GET). If `configured: false`, add `RESEND_API_KEY` in Vercel and redeploy.
-- **Emails not received**: Ensure `FROM_EMAIL` is from a verified domain. Use `onboarding@resend.dev` for testing (no domain verification needed).
+- **Emails not received**: Ensure `FROM_EMAIL` is from a verified domain. Use `onboarding@resend.dev` for testing (can only send to admin/account owner).
 - **No email sent**: Admin always receives a copy. Customer receives when they provide a real email at checkout. If they skip the email field, only admin gets the email.
 - **COD: no email**: Add `RESEND_API_KEY` and `FROM_EMAIL` in **Railway** (backend variables). Backend sends directly to Resend when order is confirmed. Redeploy backend after adding.
 - **Orders not in Admin**: Orders are saved even when Shiprocket fails. Redeploy after changes. Ensure `VITE_API_URL` points to your Railway backend and CORS allows your Vercel domain.
