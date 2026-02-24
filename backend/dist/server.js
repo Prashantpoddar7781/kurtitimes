@@ -27,11 +27,8 @@ const allowedOrigins = [
 ].filter(Boolean);
 app.use(cors({
     origin: (origin, cb) => {
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-            cb(null, true);
-        } else {
-            cb(null, false);
-        }
+        const allow = !origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'));
+        cb(null, allow ? (origin || true) : false);
     },
     credentials: true
 }));
