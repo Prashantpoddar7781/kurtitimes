@@ -19,6 +19,7 @@ interface Order {
   items: Array<{
     quantity: number;
     price: number;
+    size?: string | null;
     product?: { name: string };
   }>;
 }
@@ -435,7 +436,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                                         <ul className="space-y-1">
                                           {order.items?.map((item, idx) => (
                                             <li key={idx} className="flex justify-between gap-4">
-                                              <span>{item.product?.name || 'Product'} × {item.quantity}</span>
+                                              <span>{item.product?.name || 'Product'}{item.size ? ` (Size: ${item.size})` : ''} × {item.quantity}</span>
                                               <span>{CURRENCY_SYMBOL}{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                                             </li>
                                           ))}

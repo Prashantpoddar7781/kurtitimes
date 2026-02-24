@@ -174,7 +174,7 @@ async function saveOrderAndSendEmail(data, shipping, shipmentResult, cashfreeOrd
         customerEmail: shipping.email || null,
         shippingAddress,
         total: shipping.total,
-        items: (shipping.cartItems || []).map((c) => ({ productId: c.id, quantity: c.quantity, price: c.price })),
+        items: (shipping.cartItems || []).map((c) => ({ productId: c.id, quantity: c.quantity, price: c.price, size: c.selectedSize || null })),
         cashfreeOrderId,
         shiprocketOrderId: shipmentResult?.shipment_id,
         awbCode: shipmentResult?.awb_code,

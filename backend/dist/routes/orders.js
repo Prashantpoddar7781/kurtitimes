@@ -91,10 +91,12 @@ router.post('/confirm', async (req, res) => {
             }
             if (!productId) continue;
             orderTotal += price * qty;
+            const size = item.size && String(item.size).trim() ? String(item.size).trim() : null;
             orderItems.push({
                 productId,
                 quantity: qty,
-                price
+                price,
+                size
             });
         }
         if (orderItems.length === 0) return res.status(400).json({ error: 'No valid items' });

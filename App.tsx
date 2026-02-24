@@ -102,7 +102,7 @@ const App: React.FC = () => {
           customerEmail: data.email || null,
           shippingAddress,
           total: data.total,
-          items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price })),
+          items: data.cartItems.map((c: any) => ({ productId: c.id, quantity: c.quantity, price: c.price, size: c.selectedSize || null })),
           cashfreeOrderId: orderId,
         }).catch((e) => console.error('Order save backup:', e));
         // Notify admin via WhatsApp
