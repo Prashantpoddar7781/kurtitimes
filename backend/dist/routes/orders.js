@@ -128,6 +128,26 @@ router.post('/confirm', async (req, res) => {
                 }
             }
         });
+        const emailBaseUrl = process.env.FRONTEND_URL || process.env.SEND_EMAIL_BASE_URL || 'https://kurtitimes.vercel.app';
+        const orderDetailsStr = (order.items || []).map((i) => `• ${i.product?.name || 'Product'}${i.size ? ` (Size: ${i.size})` : ''} (x${i.quantity}) - ₹${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n');
+        try {
+            await fetch(`${emailBaseUrl.replace(/\/$/, '')}/api/send-order-confirmation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: order.customerEmail && !String(order.customerEmail).includes('@temp.com') ? order.customerEmail : null,
+                    name: order.customerName,
+                    orderId: order.cashfreeOrderId || order.id,
+                    awbCode: awbCode || null,
+                    courierName: null,
+                    orderDetails: orderDetailsStr,
+                    total: order.total,
+                    isCOD,
+                }),
+            });
+        } catch (e) {
+            console.error('Failed to send order confirmation email:', e);
+        }
         res.status(201).json(order);
     }
     catch (error) {

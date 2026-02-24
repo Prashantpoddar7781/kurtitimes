@@ -1,11 +1,12 @@
 # Order & Webhook Setup
 
-## Webhook (Required for orders)
+## Required URLs
 
-The Cashfree webhook creates Shiprocket shipments and saves orders. Set in **Vercel**:
+**Vercel** (for frontend + webhook):
 - `BACKEND_URL` – your Railway backend URL (e.g. `https://kurtitimes-production.up.railway.app`)
 
-Without `BACKEND_URL`, orders won't be saved and shipments won't be created.
+**Railway** (for backend to send order emails):
+- `FRONTEND_URL` – your Vercel site URL (e.g. `https://kurtitimes.vercel.app`) – backend calls this to trigger order confirmation emails
 
 ## Order Confirmation Email
 
@@ -33,5 +34,5 @@ Without `RESEND_API_KEY`, order placement still works; emails are skipped. Both 
 - **No emails in Resend dashboard**: Check config: visit `https://YOUR-SITE.vercel.app/api/send-order-confirmation` (GET). If `configured: false`, add `RESEND_API_KEY` in Vercel and redeploy.
 - **Emails not received**: Ensure `FROM_EMAIL` is from a verified domain. Use `onboarding@resend.dev` for testing (no domain verification needed).
 - **No email sent**: Admin always receives a copy. Customer receives when they provide a real email at checkout. If they skip the email field, only admin gets the email.
-- **Prepaid orders: no email**: Add `SEND_EMAIL_BASE_URL` = `https://kurtitimes.vercel.app` in Vercel. The webhook (triggered by Cashfree) must call this URL to send emails. Without it, prepaid emails may fail.
+- **COD/prepaid: no email**: Add `FRONTEND_URL` = `https://kurtitimes.vercel.app` in **Railway**. The backend sends emails by calling the Vercel API when an order is confirmed. Add `SEND_EMAIL_BASE_URL` in Vercel for webhook (prepaid).
 - **Orders not in Admin**: Orders are saved even when Shiprocket fails. Redeploy after changes. Ensure `VITE_API_URL` points to your Railway backend and CORS allows your Vercel domain.
