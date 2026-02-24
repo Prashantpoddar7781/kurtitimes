@@ -231,14 +231,16 @@ const App: React.FC = () => {
         const token = res.data?.token;
         if (token) {
           localStorage.setItem('kurtiTimesAdminToken', token);
+          setIsAdminLoggedIn(true);
+          setIsAdminDashboardOpen(true);
+          setIsAuthenticated(true);
+          return true;
         }
       } catch (_) {
-        // Backend unreachable - allow access; Orders tab will show an error and can retry
+        // Backend unreachable – no point letting admin in if orders won't load
       }
-      setIsAdminLoggedIn(true);
-      setIsAdminDashboardOpen(true);
-      setIsAuthenticated(true);
-      return true;
+      alert('Could not connect to admin server. Check VITE_API_URL in Vercel and ensure the backend is running.');
+      return false;
     }
     // Try backend login with User ID as email (for other admins)
     try {
