@@ -61,24 +61,26 @@ const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
     setError(null);
 
     try {
-      const formData = new FormData();
-      base64Images.forEach((dataUrl, i) => {
-        const file = dataURLtoFile(dataUrl, `ai-photoshoot-${i + 1}.png`);
+      const urls: string[] = [];
+      for (let i = 0; i < base64Images.length; i++) {
+        const formData = new FormData();
+        const file = dataURLtoFile(base64Images[i], `ai-photoshoot-${i + 1}.png`);
         formData.append('images', file);
-      });
 
-      const uploadRes = await fetch('/api/cloudinary-upload', {
-        method: 'POST',
-        body: formData,
-      });
+        const uploadRes = await fetch('/api/cloudinary-upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json().catch(() => ({}));
-        throw new Error(err.message || 'Image upload failed');
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.message || `Image ${i + 1} upload failed`);
+        }
+
+        const data = await uploadRes.json();
+        const uploaded = (data?.files || []).map((f: { url: string }) => f.url).filter(Boolean);
+        urls.push(...uploaded);
       }
-
-      const data = await uploadRes.json();
-      const urls = (data?.files || []).map((f: { url: string }) => f.url).filter(Boolean);
 
       if (urls.length > 0) {
         const capped = urls.slice(0, maxSlots);
