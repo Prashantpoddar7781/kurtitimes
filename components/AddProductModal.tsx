@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
+import { X, Upload, Trash2, Plus, Image as ImageIcon, Sparkles } from 'lucide-react';
+import AIPhotoshootModal from './AIPhotoshootModal';
 import { Product, Category } from '../types';
 import api from '../utils/api';
 
@@ -36,6 +37,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAIPhotoshootOpen, setIsAIPhotoshootOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
@@ -414,14 +416,25 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
 
                 {/* Upload Button */}
                 {existingImageUrls.length + imageFiles.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={handleImageClick}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-brand-500 hover:text-brand-700 transition-colors"
-                  >
-                    <Upload className="h-5 w-5" />
-                    {existingImageUrls.length + imageFiles.length === 0 ? 'Upload Images (1-5)' : `Add More Images (${existingImageUrls.length + imageFiles.length}/5)`}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleImageClick}
+                      className="flex items-center justify-center gap-2 flex-1 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-brand-500 hover:text-brand-700 transition-colors"
+                    >
+                      <Upload className="h-5 w-5" />
+                      {existingImageUrls.length + imageFiles.length === 0 ? 'Upload Images (1-5)' : `Add More Images (${existingImageUrls.length + imageFiles.length}/5)`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAIPhotoshootOpen(true)}
+                      disabled={existingImageUrls.length + imageFiles.length >= 5}
+                      className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-brand-200 rounded-lg text-brand-700 hover:border-brand-400 hover:bg-brand-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Sparkles className="h-5 w-5" />
+                      AI Photoshoot
+                    </button>
+                  </div>
                 )}
 
                 {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
@@ -590,6 +603,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
           </div>
         </div>
       </div>
+
+      <AIPhotoshootModal
+        isOpen={isAIPhotoshootOpen}
+        onClose={() => setIsAIPhotoshootOpen(false)}
+        onImagesGenerated={(urls) => {
+          setExistingImageUrls((prev) => {
+            const combined = [...prev, ...urls];
+            return combined.slice(0, 5);
+          });
+        }}
+        maxSlots={5 - existingImageUrls.length - imageFiles.length}
+      />
     </div>
   );
 };

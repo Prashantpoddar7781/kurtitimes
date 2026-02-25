@@ -48,3 +48,61 @@ export const getChatResponseStream = async (message: string): Promise<AsyncItera
 export const resetChat = () => {
   chatSession = null;
 };
+
+export const generatePhotoshootImage = async (productImageBase64: string, angle: string): Promise<string> => {
+  if (!apiKey) {
+    throw new Error("API Key not found");
+  }
+
+  const model = "gemini-2.5-flash-image";
+  const modelDescription = "A beautiful Indian model with long straight dark hair, warm skin tone, and elegant features. She is the official model for Kurti Times.";
+
+  const prompt = `Perform a professional fashion photoshoot. 
+  Take the clothing item from the provided product image and place it perfectly on the model described below.
+  
+  Model Description: ${modelDescription}
+  
+  Angle/Shot Type: ${angle}
+  
+  Requirements:
+  1. The clothing item (kurti/coord set/tunic) must maintain its exact color, pattern, and fabric texture from the product image.
+  2. The fit on the model should be realistic and flattering.
+  3. The background should be a high-end, minimalist studio setting with soft, warm lighting.
+  4. Ensure the model's face and features are consistent with the description.
+  5. Output ONLY the generated image.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: productImageBase64.split(',')[1] || productImageBase64,
+            },
+          },
+          { text: prompt },
+        ],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+        },
+      },
+    });
+
+    if (response.candidates && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+    }
+
+    throw new Error("No image generated");
+  } catch (error) {
+    console.error("Gemini Image Generation Error:", error);
+    throw error;
+  }
+};
