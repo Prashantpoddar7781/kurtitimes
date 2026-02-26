@@ -224,9 +224,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
         }
       }
 
-      const imageUrls = isEditMode
-        ? [...existingImageUrls, ...newImageUrls]
-        : newImageUrls;
+      const imageUrls = [...existingImageUrls, ...newImageUrls];
 
       const newProduct: Product = {
         id: isEditMode ? initialProduct!.id : nextId,
