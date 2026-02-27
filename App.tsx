@@ -71,8 +71,22 @@ const App: React.FC = () => {
   // Check if user is already authenticated on mount
   useEffect(() => {
     const currentUser = localStorage.getItem('kurtiTimesCurrentUser');
-    if (currentUser) {
+    const adminToken = localStorage.getItem('kurtiTimesAdminToken');
+    if (currentUser || adminToken) {
       setIsAuthenticated(true);
+      if (adminToken) {
+        setIsAdminLoggedIn(true);
+      }
+    }
+  }, []);
+
+  // Handle return from wallet recharge - open admin dashboard (URL cleaned by AdminDashboard after refetch)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('recharge') === 'success' && localStorage.getItem('kurtiTimesAdminToken')) {
+      setIsAuthenticated(true);
+      setIsAdminLoggedIn(true);
+      setIsAdminDashboardOpen(true);
     }
   }, []);
 

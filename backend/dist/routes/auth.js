@@ -31,7 +31,7 @@ router.post('/login', async (req, res) => {
                 String(secret),
                 { expiresIn }
             );
-            return res.json({ token, admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin' } });
+            return res.json({ token, admin: { id: 'admin-7624029175', email: '7624029175', role: 'admin', walletBalance: 0 } });
         }
         const admin = await prisma.adminUser.findUnique({
             where: { email }
@@ -50,7 +50,8 @@ router.post('/login', async (req, res) => {
             admin: {
                 id: admin.id,
                 email: admin.email,
-                role: admin.role
+                role: admin.role,
+                walletBalance: Number(admin.walletBalance ?? 0)
             }
         });
     }
@@ -103,19 +104,23 @@ router.post('/register', async (req, res) => {
 // GET /api/auth/me - Get current admin user
 router.get('/me', authenticate, async (req, res) => {
     try {
+        if (req.user.id === 'admin-7624029175') {
+            return res.json({ id: 'admin-7624029175', email: '7624029175', role: 'admin', walletBalance: 0 });
+        }
         const admin = await prisma.adminUser.findUnique({
             where: { id: req.user.id },
             select: {
                 id: true,
                 email: true,
                 role: true,
+                walletBalance: true,
                 createdAt: true
             }
         });
         if (!admin) {
             return res.status(404).json({ error: 'Admin not found' });
         }
-        res.json(admin);
+        res.json({ ...admin, walletBalance: Number(admin?.walletBalance ?? 0) });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

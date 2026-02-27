@@ -88,12 +88,23 @@ model OrderItem {
 }
 
 model AdminUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  role           String   @default("admin")
+  walletBalance  Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([email])
+}
+
+model WalletRecharge {
+  id              String   @id @default(cuid())
+  cashfreeOrderId String   @unique
+  adminId         String
+  amountInRupees  Float
+  createdAt       DateTime @default(now())
+
+  @@index([adminId])
 }

@@ -11,6 +11,10 @@ interface AddProductModalProps {
   nextId: number;
   /** When provided, modal works in edit mode */
   initialProduct?: Product | null;
+  /** Wallet balance for AI Photoshoot (₹50/photoshoot) */
+  walletBalance?: number;
+  /** Called after wallet deduction to refresh balance */
+  onWalletRefreshed?: () => void;
 }
 
 interface ImageFile {
@@ -18,7 +22,7 @@ interface ImageFile {
   preview: string;
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId, initialProduct }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSave, nextId, initialProduct, walletBalance = 0, onWalletRefreshed }) => {
   const isEditMode = !!initialProduct;
   
   const [name, setName] = useState('');
@@ -612,6 +616,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSa
           });
         }}
         maxSlots={5 - existingImageUrls.length - imageFiles.length}
+        walletBalance={walletBalance}
+        onWalletRefreshed={onWalletRefreshed}
       />
     </div>
   );

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { X, Camera, Upload, Sparkles, Loader2, Image as ImageIcon, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { generatePhotoshootImage } from '../services/geminiService';
+import api from '../utils/api';
+
+const AI_PHOTOSHOOT_COST = 50;
 
 const ANGLES = [
   { id: 'front', label: 'Front View', description: 'Full front facing shot' },
@@ -25,6 +28,8 @@ interface AIPhotoshootModalProps {
   onClose: () => void;
   onImagesGenerated: (urls: string[]) => void;
   maxSlots?: number;
+  walletBalance?: number;
+  onWalletRefreshed?: () => void;
 }
 
 const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
@@ -32,6 +37,8 @@ const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
   onClose,
   onImagesGenerated,
   maxSlots = 5,
+  walletBalance = 0,
+  onWalletRefreshed,
 }) => {
   const [productImage, setProductImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -59,6 +66,18 @@ const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
 
     setIsUploading(true);
     setError(null);
+
+    try {
+      const deductRes = await api.post('/api/admin/wallet/deduct', { amount: AI_PHOTOSHOOT_COST });
+      if (deductRes.data?.success) {
+        onWalletRefreshed?.();
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Insufficient balance';
+      setError(msg);
+      setIsUploading(false);
+      return;
+    }
 
     try {
       const urls: string[] = [];
@@ -98,6 +117,10 @@ const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
 
   const generatePhotoshoot = async () => {
     if (!productImage) return;
+    if (walletBalance < AI_PHOTOSHOOT_COST) {
+      setError(`Insufficient balance. AI Photoshoot costs ₹${AI_PHOTOSHOOT_COST}. You have ₹${walletBalance.toFixed(0)}. Recharge wallet.`);
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
@@ -142,6 +165,7 @@ const AIPhotoshootModal: React.FC<AIPhotoshootModalProps> = ({
           <h2 className="text-xl font-serif font-bold text-brand-950 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-brand-600" />
             AI Photoshoot
+            <span className="text-sm font-normal text-gray-500">(₹50 per shoot)</span>
           </h2>
           <button
             onClick={handleClose}

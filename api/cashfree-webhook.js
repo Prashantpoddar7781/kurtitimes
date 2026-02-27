@@ -17,6 +17,7 @@ module.exports = async (req, res) => {
     switch (type) {
       case 'PAYMENT_SUCCESS_WEBHOOK':
         console.log('Payment successful:', JSON.stringify(data).slice(0, 500));
+        if (await handleWalletRecharge(data)) return;
         await createShiprocketFromWebhook(data);
         break;
 
@@ -38,6 +39,58 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
 };
+
+async function handleWalletRecharge(data) {
+  if (!data?.order?.order_tags) return false;
+  const tags = data.order.order_tags;
+  if (!tags.wr) return false;
+
+  const keys = Object.keys(tags).filter((k) => k.startsWith('wr'));
+  keys.sort((a, b) => {
+    const na = a === 'wr' ? 0 : parseInt(String(a).replace('wr', ''), 10) || 0;
+    const nb = b === 'wr' ? 0 : parseInt(String(b).replace('wr', ''), 10) || 0;
+    return na - nb;
+  });
+  const encoded = keys.map((k) => tags[k]).join('');
+  if (!encoded) return false;
+
+  let wr;
+  try {
+    wr = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+  } catch (e) {
+    console.error('Failed to parse wallet recharge data:', e);
+    return false;
+  }
+
+  const { adminId, amount } = wr;
+  if (!adminId || !amount) return false;
+
+  const backendUrl = process.env.BACKEND_URL || process.env.VITE_API_URL || 'https://kurtitimes-production.up.railway.app';
+  const secret = process.env.WALLET_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('WALLET_WEBHOOK_SECRET not set');
+    return false;
+  }
+
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/wallet/credit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-wallet-webhook-secret': secret,
+      },
+      body: JSON.stringify({ orderId: data.order.order_id, adminId, amount }),
+    });
+    if (res.ok) {
+      console.log('Wallet credited:', adminId, amount);
+      return true;
+    }
+    console.error('Wallet credit failed:', await res.text());
+  } catch (e) {
+    console.error('Wallet credit request failed:', e);
+  }
+  return false;
+}
 
 async function createShiprocketFromWebhook(data) {
   if (!data || !data.order) return;

@@ -73,9 +73,9 @@
   <body>
     <div id="root"></div>
   <script src="/api/cashfree-sdk"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
-    // Razorpay Key ID - Test Key (kept for reference; Cashfree used for payments)
-    // For production, replace with your live key from Razorpay Dashboard
+    // Razorpay Key ID - used for wallet recharge (product payments use Cashfree)
     window.RAZORPAY_KEY_ID = 'rzp_test_Rv4c4iUwni06DQ';
   </script>
   <script type="module" src="/index.tsx"></script>

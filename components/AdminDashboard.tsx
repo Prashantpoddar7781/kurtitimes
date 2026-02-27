@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Edit2, Trash2, Plus, Package, ShoppingBag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Edit2, Trash2, Plus, Package, ShoppingBag, Wallet, CreditCard } from 'lucide-react';
 import { Product, Category } from '../types';
 import { CURRENCY_SYMBOL } from '../constants';
 import AddProductModal from './AddProductModal';
@@ -108,6 +108,94 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [adminId, setAdminId] = useState<string | null>(null);
+  const [isRechargeOpen, setIsRechargeOpen] = useState(false);
+  const [rechargeAmount, setRechargeAmount] = useState('200');
+  const [rechargeLoading, setRechargeLoading] = useState(false);
+
+  // Fetch admin wallet when dashboard opens
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/api/auth/me')
+        .then((res) => {
+          setAdminId(res.data?.id || null);
+          setWalletBalance(Number(res.data?.walletBalance ?? 0));
+        })
+        .catch(() => {});
+      api.get('/api/admin/wallet')
+        .then((res) => setWalletBalance(Number(res.data?.balance ?? 0)))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Refetch wallet on recharge success (URL has ?recharge=success)
+  useEffect(() => {
+    if (isOpen && window.location.search.includes('recharge=success')) {
+      window.history.replaceState({}, '', window.location.pathname || '/');
+      api.get('/api/admin/wallet').then((res) => setWalletBalance(Number(res.data?.balance ?? 0))).catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleRecharge = async () => {
+    const amount = parseInt(rechargeAmount, 10);
+    if (!amount || amount < 200) {
+      alert('Minimum recharge is ₹200');
+      return;
+    }
+    if (!adminId) {
+      alert('Admin session expired. Please log in again.');
+      return;
+    }
+    setRechargeLoading(true);
+    try {
+      const res = await fetch('/api/razorpay-create-wallet-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('kurtiTimesAdminToken')}` },
+        body: JSON.stringify({ amount, adminId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed to create order');
+      if (!data.orderId || !data.keyId) throw new Error('Invalid order response');
+      // Load Razorpay checkout script
+      const loadScript = (): Promise<boolean> =>
+        new Promise((resolve) => {
+          if ((window as any).Razorpay) {
+            resolve(true);
+            return;
+          }
+          const s = document.createElement('script');
+          s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          s.onload = () => resolve(true);
+          s.onerror = () => resolve(false);
+          document.body.appendChild(s);
+        });
+      const loaded = await loadScript();
+      if (!loaded || !(window as any).Razorpay) throw new Error('Payment gateway not loaded');
+      const Razorpay = (window as any).Razorpay;
+      setIsRechargeOpen(false);
+      const rzp = new Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency || 'INR',
+        order_id: data.orderId,
+        name: 'Kurti Times',
+        description: `Wallet recharge ₹${amount}`,
+        handler: () => {
+          // Webhook credits wallet; refetch after short delay
+          setTimeout(() => {
+            api.get('/api/admin/wallet').then((r) => setWalletBalance(Number(r.data?.balance ?? 0))).catch(() => {});
+          }, 1500);
+        },
+        modal: { ondismiss: () => setRechargeLoading(false) },
+      });
+      rzp.open();
+    } catch (err: any) {
+      alert(err?.message || 'Recharge failed');
+    } finally {
+      setRechargeLoading(false);
+    }
+  };
 
   // Update local products when props change
   React.useEffect(() => {
@@ -296,13 +384,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-serif font-bold text-gray-900">Admin Dashboard</h1>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-brand-50 rounded-lg">
+                <Wallet className="h-5 w-5 text-brand-700" />
+                <span className="font-semibold text-brand-900">₹{walletBalance.toFixed(0)}</span>
+                <button
+                  onClick={() => setIsRechargeOpen(true)}
+                  className="text-sm px-2 py-1 bg-brand-700 text-white rounded hover:bg-brand-800"
+                >
+                  Recharge
+                </button>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
           </div>
+
+          {isRechargeOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Recharge Wallet</h3>
+                <p className="text-sm text-gray-600 mb-4">Minimum ₹200. Amount will be credited to your wallet via UPI/Card.</p>
+                <input
+                  type="number"
+                  min="200"
+                  value={rechargeAmount}
+                  onChange={(e) => setRechargeAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4"
+                  placeholder="200"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsRechargeOpen(false)}
+                    className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRecharge}
+                    disabled={rechargeLoading}
+                    className="flex-1 py-2 bg-brand-700 text-white rounded-lg hover:bg-brand-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {rechargeLoading ? 'Processing...' : <><CreditCard className="h-4 w-4" /> Pay ₹{rechargeAmount || '0'}</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4 mt-4 border-b border-gray-200">
             <button
               onClick={() => setActiveTab('products')}
@@ -499,6 +632,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
               onSave={handleSaveProduct}
               nextId={0}
               initialProduct={editProduct}
+              walletBalance={walletBalance}
+              onWalletRefreshed={() => api.get('/api/admin/wallet').then((r) => setWalletBalance(Number(r.data?.balance ?? 0))).catch(() => {})}
             />
 
             {/* Products Table - Desktop View */}
