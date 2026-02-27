@@ -5,13 +5,7 @@
   "installCommand": "npm install",
   "framework": "vite",
   "rewrites": [
-    {"source": "/api/shiprocket-auth", "destination": "/api/shiprocket-auth.js"},
-    {"source": "/api/shiprocket-rates", "destination": "/api/shiprocket-rates.js"},
-    {"source": "/api/shiprocket-create-shipment", "destination": "/api/shiprocket-create-shipment.js"},
-    {"source": "/api/shiprocket-generate-label", "destination": "/api/shiprocket-generate-label.js"},
-    {"source": "/api/shiprocket-request-pickup", "destination": "/api/shiprocket-request-pickup.js"},
     {"source": "/api/send-order-confirmation", "destination": "/api/send-order-confirmation.js"},
-    {"source": "/api/send-whatsapp-order-confirmation", "destination": "/api/send-whatsapp-order-confirmation.js"},
     {"source": "/(.*)", "destination": "/index.html"}
   ]
 }
