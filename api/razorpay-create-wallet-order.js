@@ -78,6 +78,10 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('Razorpay wallet order error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to create order' });
+    const msg = error?.error?.description || error?.message || 'Failed to create order';
+    return res.status(500).json({
+      error: msg,
+      code: error?.statusCode || error?.code,
+    });
   }
 };
