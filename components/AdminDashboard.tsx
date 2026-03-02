@@ -113,6 +113,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState('1');
   const [rechargeLoading, setRechargeLoading] = useState(false);
+  const [testCreditLoading, setTestCreditLoading] = useState(false);
 
   // Fetch admin wallet when dashboard opens
   useEffect(() => {
@@ -194,6 +195,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
       alert(err?.message || 'Recharge failed');
     } finally {
       setRechargeLoading(false);
+    }
+  };
+
+  const handleTestCredit = async () => {
+    setTestCreditLoading(true);
+    try {
+      const token = localStorage.getItem('kurtiTimesAdminToken');
+      if (!token) {
+        alert('Please log in first');
+        return;
+      }
+      const res = await fetch('/api/test-wallet-credit', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.details || 'Test credit failed');
+      api.get('/api/admin/wallet').then((r) => setWalletBalance(Number(r.data?.balance ?? 0))).catch(() => {});
+      alert(data.message || '₹1 credited. Refresh to see balance.');
+    } catch (err: any) {
+      alert(err?.message || 'Test credit failed');
+    } finally {
+      setTestCreditLoading(false);
     }
   };
 
@@ -432,6 +456,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                     {rechargeLoading ? 'Processing...' : <><CreditCard className="h-4 w-4" /> Pay ₹{rechargeAmount || '0'}</>}
                   </button>
                 </div>
+                <button
+                  onClick={handleTestCredit}
+                  disabled={testCreditLoading}
+                  className="mt-3 w-full py-2 text-sm text-gray-600 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {testCreditLoading ? 'Testing...' : 'Test credit ₹1 (no payment — verify backend)'}
+                </button>
               </div>
             </div>
           )}
