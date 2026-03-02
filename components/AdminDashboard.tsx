@@ -111,7 +111,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [adminId, setAdminId] = useState<string | null>(null);
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
-  const [rechargeAmount, setRechargeAmount] = useState('1');
+  const [rechargeAmount, setRechargeAmount] = useState('200');
   const [rechargeLoading, setRechargeLoading] = useState(false);
   const [testCreditLoading, setTestCreditLoading] = useState(false);
 
@@ -140,8 +140,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
 
   const handleRecharge = async () => {
     const amount = parseInt(rechargeAmount, 10);
-    if (!amount || amount < 1) {
-      alert('Minimum recharge is ₹1');
+    if (!amount || amount < 200) {
+      alert('Minimum recharge is ₹200');
       return;
     }
     if (!adminId) {
@@ -424,14 +424,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
               <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Recharge Wallet</h3>
-                <p className="text-sm text-gray-600 mb-4">Minimum ₹1 (for testing). Amount will be credited to your wallet via UPI/Card.</p>
+                <p className="text-sm text-gray-600 mb-4">Minimum ₹200. Amount will be credited to your wallet via UPI/Card.</p>
                 <input
                   type="number"
-                  min="1"
+                  min="200"
                   value={rechargeAmount}
                   onChange={(e) => setRechargeAmount(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4"
-                  placeholder="1"
+                  placeholder="200"
                 />
                 <div className="flex gap-2">
                   <button

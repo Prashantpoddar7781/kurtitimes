@@ -42,8 +42,8 @@ module.exports = async (req, res) => {
 
     const { amount, adminId } = body;
 
-    if (!amount || amount < 1) {
-      return res.status(400).json({ error: 'Minimum recharge amount is ₹1' });
+    if (!amount || amount < 200) {
+      return res.status(400).json({ error: 'Minimum recharge amount is ₹200' });
     }
     if (!adminId) {
       return res.status(400).json({ error: 'adminId required' });
