@@ -36,6 +36,32 @@ router.post('/wallet/credit', async (req, res) => {
     }
 });
 
+// POST /api/admin/wallet/test-credit - Test credit ₹1 (admin auth only, no webhook secret)
+router.post('/wallet/test-credit', authenticate, requireAdmin, async (req, res) => {
+    try {
+        if (req.user.id === 'admin-7624029175') {
+            return res.status(402).json({ error: 'Wallet not available for this account.' });
+        }
+        const orderId = `test_${Date.now()}`;
+        const amount = 1;
+        const existing = await prisma.walletRecharge.findUnique({ where: { cashfreeOrderId: orderId } });
+        if (existing) {
+            return res.json({ success: true, message: 'Already credited' });
+        }
+        await prisma.$transaction([
+            prisma.walletRecharge.create({ data: { cashfreeOrderId: orderId, adminId: req.user.id, amountInRupees: amount } }),
+            prisma.adminUser.update({
+                where: { id: req.user.id },
+                data: { walletBalance: { increment: amount } }
+            })
+        ]);
+        res.json({ success: true, message: '₹1 credited. Refresh to see balance.' });
+    } catch (e) {
+        console.error('Test wallet credit error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin/wallet - Get balance (auth)
 router.get('/wallet', authenticate, requireAdmin, async (req, res) => {
     try {

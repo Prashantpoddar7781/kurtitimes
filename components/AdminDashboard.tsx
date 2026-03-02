@@ -201,21 +201,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const handleTestCredit = async () => {
     setTestCreditLoading(true);
     try {
-      const token = localStorage.getItem('kurtiTimesAdminToken');
-      if (!token) {
-        alert('Please log in first');
-        return;
-      }
-      const res = await fetch('/api/test-wallet-credit', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.details || 'Test credit failed');
+      const res = await api.post('/api/admin/wallet/test-credit');
       api.get('/api/admin/wallet').then((r) => setWalletBalance(Number(r.data?.balance ?? 0))).catch(() => {});
-      alert(data.message || '₹1 credited. Refresh to see balance.');
+      alert(res.data?.message || '₹1 credited. Refresh to see balance.');
     } catch (err: any) {
-      alert(err?.message || 'Test credit failed');
+      const data = err?.response?.data;
+      const msg = [data?.error, data?.message].filter(Boolean).join(' — ') || err?.message || 'Test credit failed';
+      alert(msg);
     } finally {
       setTestCreditLoading(false);
     }
