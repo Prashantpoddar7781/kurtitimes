@@ -114,6 +114,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
   const [rechargeAmount, setRechargeAmount] = useState('200');
   const [rechargeLoading, setRechargeLoading] = useState(false);
   const [testCreditLoading, setTestCreditLoading] = useState(false);
+  const [creditOrderId, setCreditOrderId] = useState('');
+  const [creditOrderLoading, setCreditOrderLoading] = useState(false);
 
   // Fetch admin wallet when dashboard opens
   useEffect(() => {
@@ -195,6 +197,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
       alert(err?.message || 'Recharge failed');
     } finally {
       setRechargeLoading(false);
+    }
+  };
+
+  const handleCreditFromOrder = async () => {
+    const id = creditOrderId?.trim();
+    if (!id) {
+      alert('Enter Razorpay order ID (e.g. order_xxx from payment email or dashboard)');
+      return;
+    }
+    setCreditOrderLoading(true);
+    try {
+      const res = await fetch('/api/razorpay-credit-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('kurtiTimesAdminToken')}`,
+        },
+        body: JSON.stringify({ orderId: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.hint || data.details || 'Failed');
+      api.get('/api/admin/wallet').then((r) => setWalletBalance(Number(r.data?.balance ?? 0))).catch(() => {});
+      alert(data.message || 'Credited. Refresh to see balance.');
+      setCreditOrderId('');
+    } catch (err: any) {
+      alert(err?.message || 'Credit failed');
+    } finally {
+      setCreditOrderLoading(false);
     }
   };
 
@@ -455,6 +485,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose, produc
                 >
                   {testCreditLoading ? 'Testing...' : 'Test credit ₹1 (no payment — verify backend)'}
                 </button>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 mb-2">Paid but wallet not updated? Credit from order ID:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={creditOrderId}
+                      onChange={(e) => setCreditOrderId(e.target.value)}
+                      placeholder="order_xxxxxxxx"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                    <button
+                      onClick={handleCreditFromOrder}
+                      disabled={creditOrderLoading}
+                      className="px-4 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {creditOrderLoading ? '...' : 'Credit'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
