@@ -472,7 +472,9 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
                        </div>
                        <div className="flex justify-between">
                          <span>Shipping</span>
-                         <span className="text-green-600 font-medium">FREE</span>
+                         <span className={shippingCost === 0 ? 'text-green-600 font-medium' : ''}>
+                           {shippingCost === 0 ? 'FREE' : `${CURRENCY_SYMBOL}${shippingCost.toLocaleString('en-IN')}`}
+                         </span>
                        </div>
                        {pincode && validatePincode(pincode) && estimatedDays > 0 && (
                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
