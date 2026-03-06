@@ -50,14 +50,15 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cartItems, onUpd
     }
   }, [isOpen]);
 
-  // Shipping disabled for now - always free
+  // Shipping: ₹60 when order < ₹3000, free when ₹3000+
   useEffect(() => {
-    setShippingCost(0);
     if (pincode && validatePincode(pincode)) {
-      const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const shipping = calculateShipping(pincode, total);
+      const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const shipping = calculateShipping(pincode, subtotal);
+      setShippingCost(shipping.amount);
       setEstimatedDays(shipping.estimatedDays);
     } else {
+      setShippingCost(0);
       setEstimatedDays(0);
     }
   }, [pincode, cartItems]);

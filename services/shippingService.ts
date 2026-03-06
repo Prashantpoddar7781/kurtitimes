@@ -20,11 +20,8 @@ export const calculateShipping = (
   pincode: string,
   orderValue: number
 ): ShippingCost => {
-  // Basic shipping calculation
-  // Can be replaced with Shiprocket API integration later
-  
-  // Free shipping for orders above ₹2000
-  if (orderValue >= 2000) {
+  // Free shipping for orders ₹3000 and above
+  if (orderValue >= 3000) {
     return {
       amount: 0,
       estimatedDays: 3,
@@ -32,19 +29,10 @@ export const calculateShipping = (
     };
   }
 
-  // Standard shipping rates based on order value
-  if (orderValue >= 1500) {
-    return {
-      amount: 50,
-      estimatedDays: 3,
-      method: 'Standard Shipping'
-    };
-  }
-
-  // Default shipping
+  // ₹60 delivery charges for orders below ₹3000
   return {
-    amount: 99,
-    estimatedDays: 4,
+    amount: 60,
+    estimatedDays: 3,
     method: 'Standard Shipping'
   };
 };

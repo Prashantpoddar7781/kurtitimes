@@ -12,9 +12,8 @@ I've added **basic shipping functionality** with:
    - Pincode (required, 6 digits)
 
 2. **Shipping Cost Calculation:**
-   - **Free shipping** for orders above ₹2000
-   - **₹50 shipping** for orders ₹1500-₹1999
-   - **₹99 shipping** for orders below ₹1500
+   - **Free shipping** for orders ₹3000 and above
+   - **₹60 delivery charges** for orders below ₹3000
    - Estimated delivery: 3-4 days
 
 3. **Features:**
@@ -66,9 +65,8 @@ For production, you should integrate with **Shiprocket** for:
 
 | Order Value | Shipping Cost | Delivery Time |
 |------------|---------------|---------------|
-| ₹2000+ | FREE | 3 days |
-| ₹1500-₹1999 | ₹50 | 3 days |
-| Below ₹1500 | ₹99 | 4 days |
+| ₹3000+ | FREE | 3 days |
+| Below ₹3000 | ₹60 | 4 days |
 
 ## 🔧 How to Update Shipping Rates
 
@@ -80,7 +78,7 @@ export const calculateShipping = (
   orderValue: number
 ): ShippingCost => {
   // Update your rates here
-  if (orderValue >= 2000) {
+  if (orderValue >= 3000) {
     return {
       amount: 0,
       estimatedDays: 3,
