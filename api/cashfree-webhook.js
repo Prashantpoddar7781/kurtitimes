@@ -175,7 +175,7 @@ async function createShiprocketFromWebhook(data) {
       selling_price: it.price || 0,
     })),
     payment_method: 'Prepaid',
-    sub_total: shipping.subtotal || 0,
+    sub_total: shipping.total || shipping.subtotal || 0,
     length: 20,
     breadth: 15,
     height: 5,
